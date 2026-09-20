@@ -59,17 +59,19 @@ export default function HomePage() {
             updated = true;
           }
 
-          // Ensure default exams exist with updated names and subRounds
+          // Ensure default exams exist with updated accurate schedule and subRounds
           DEFAULT_EXAMS.forEach((defExam) => {
             const existingIdx = parsed.findIndex((e) => e.id === defExam.id);
             if (existingIdx === -1) {
               parsed.push(defExam);
               updated = true;
-            } else if (defExam.id === 'vact-2027' && (!parsed[existingIdx].subRounds || parsed[existingIdx].name !== defExam.name)) {
+            } else {
+              // Update default exam metadata and dates with the new schedule
               parsed[existingIdx] = {
                 ...parsed[existingIdx],
                 name: defExam.name,
                 shortName: defExam.shortName,
+                targetDate: defExam.targetDate,
                 badge: defExam.badge,
                 description: defExam.description,
                 tips: defExam.tips,
@@ -377,14 +379,18 @@ export default function HomePage() {
               </a>
             </span>
           </div>
-          <div className="flex items-center gap-3 text-stone-400 text-[11px]">
+          <div className="flex items-center gap-2 text-stone-400 text-[11px] flex-wrap justify-center sm:justify-end">
             <span>THPTQG 2027</span>
             <span>•</span>
-            <span>V-ACT ĐHQG-HCM (Đợt 1 & 2)</span>
+            <span>V-ACT ĐHQG-HCM</span>
             <span>•</span>
-            <span>HSA ĐHQG-HN</span>
+            <span>HSA ĐHQG-HN (6 đợt)</span>
             <span>•</span>
-            <span>TSA HUST</span>
+            <span>TSA Bách Khoa (3 đợt)</span>
+            <span>•</span>
+            <span>H-SCA HCMUE</span>
+            <span>•</span>
+            <span>SPT HNUE</span>
           </div>
         </div>
       </footer>

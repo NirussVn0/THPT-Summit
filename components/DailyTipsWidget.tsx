@@ -8,33 +8,39 @@ import { MOTIVATION_QUOTES } from '@/lib/constants';
 const EXAM_TIPS = [
   {
     title: 'Quy tắc 80/20 trong đề thi GDPT mới 2027',
-    content: 'Dạng trắc nghiệm Đúng/Sai môn Toán, Lý, Hóa thường có 4 ý (a, b, c, d). Làm đúng 1 ý được 0.1đ, đúng 2 ý được 0.25đ, đúng 3 ý được 0.5đ và đúng cả 4 ý mới được trọn 1.0đ. Đừng đoán mò bừa bãi!',
+    content: 'Dạng trắc nghiệm Đúng/Sai môn Toán, Lý, Hóa gồm 4 ý (a, b, c, d). Làm đúng 1 ý được 0.1đ, đúng 2 ý được 0.25đ, đúng 3 ý được 0.5đ và đúng cả 4 ý mới được trọn 1.0đ. Đừng đoán mò bừa bãi!',
     tag: 'THPTQG 2027',
     color: 'bg-rose-50 text-rose-700 border-rose-200',
   },
   {
-    title: 'Mẹo phân bổ thời gian V-ACT ĐHQG TP.HCM (Đợt 1)',
-    content: 'Đề gồm 120 câu / 150 phút. Hãy chia làm 3 lượt: Lượt 1 làm các câu dễ & đọc hiểu trong 70 phút; Lượt 2 xử lý logic & số liệu trong 50 phút; Lượt 3 dò lại và xử lý câu phân loại cao.',
-    tag: 'V-ACT Đợt 1',
+    title: 'Mẹo phân bổ thời gian V-ACT ĐHQG TP.HCM (Đợt 1 & 2)',
+    content: '120 câu / 150 phút. Đợt 1 diễn ra đầu tháng 4 (04/04/2027), Đợt 2 cuối tháng 5 (23/05/2027). Hãy dùng Đợt 1 để làm quen không khí phòng thi và đặt mục tiêu bứt phá điểm số tối đa ở Đợt 2.',
+    tag: 'V-ACT Đợt 1 & 2',
     color: 'bg-sky-50 text-sky-700 border-sky-200',
   },
   {
-    title: 'Chiến lược bứt phá V-ACT ĐHQG TP.HCM (Đợt 2)',
-    content: 'Đợt 2 diễn ra cuối tháng 5 là cơ hội nâng điểm quý giá. Đa số các trường ĐH lấy điểm cao nhất giữa 2 đợt. Hãy tổng kết ngay các câu phân vân ở Đợt 1 để tối ưu điểm số!',
-    tag: 'V-ACT Đợt 2',
-    color: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-  },
-  {
-    title: 'Kinh nghiệm thi HSA máy tính ĐHQG Hà Nội',
-    content: 'Hệ thống thi HSA nhảy câu trực tiếp trên máy. Khi gặp câu điền số, hãy bấm cẩn thận dấu âm và số thập phân (dùng dấu chấm theo quy chuẩn hướng dẫn làm bài).',
-    tag: 'HSA 2027',
+    title: 'Kinh nghiệm thi HSA máy tính ĐHQG Hà Nội (6 đợt thi)',
+    content: 'Kỳ thi HSA gồm 6 đợt từ đầu tháng 3 đến cuối tháng 5. Khi làm câu hỏi điền số trực tiếp trên máy tính, chú ý dấu âm và dấu chấm số thập phân theo đúng quy chuẩn hướng dẫn.',
+    tag: 'HSA (6 Đợt)',
     color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   },
   {
-    title: 'Ngữ Văn GDPT 2018: Không học tủ SGK',
+    title: 'Bí quyết bứt phá TSA ĐH Bách Khoa Hà Nội (3 đợt sớm)',
+    content: 'TSA Đợt 1 khởi động rất sớm từ cuối tháng 1 (23/01/2027), tiếp theo là giữa tháng 3 và giữa tháng 5. Bài thi gồm Tư duy Toán học, Đọc hiểu và Khoa học/Giải quyết vấn đề, tập trung vào tư duy phân tích thực tế.',
+    tag: 'TSA Bách Khoa',
+    color: 'bg-amber-50 text-amber-800 border-amber-200',
+  },
+  {
+    title: 'Kỳ thi ĐGNL chuyên biệt H-SCA Sư phạm TP.HCM & SPT Sư phạm Hà Nội',
+    content: 'H-SCA (HCMUE) tổ chức 3 đợt (cuối T3, đầu T5, cuối T5). SPT (HNUE) tổ chức 2 đợt cuối tháng 5. Đề thi bám sát chương trình GDPT 2018 theo từng môn chuyên biệt để nhân hệ số môn chính.',
+    tag: 'H-SCA & SPT',
+    color: 'bg-purple-50 text-purple-800 border-purple-200',
+  },
+  {
+    title: 'Ngữ Văn GDPT 2018: Tuyệt đối không học tủ SGK',
     content: 'Tất cả các ngữ liệu trong đề thi tốt nghiệp đều là văn bản ngoài sách giáo khoa. Hãy rèn luyện kỹ năng phân tích đặc trưng thể loại (thơ, truyện ngắn, nghị luận) thay vì học thuộc lòng văn mẫu.',
     tag: 'Bí Kíp Ngữ Văn',
-    color: 'bg-amber-50 text-amber-800 border-amber-200',
+    color: 'bg-stone-50 text-stone-700 border-stone-200',
   },
 ];
 

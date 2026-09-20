@@ -40,6 +40,7 @@ export interface ExamEvent {
     shortName: string;
     targetDate: string;
     description: string;
+    reference2026?: string;
   }[];
 }
 

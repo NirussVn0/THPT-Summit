@@ -143,7 +143,7 @@ export const CountdownGrid: React.FC<CountdownGridProps> = ({ exams, onUpdateExa
             </h2>
           </div>
           <p className="text-xs text-stone-500 mt-0.5">
-            Thời gian thực đến giờ G của THPT Quốc Gia 2027, V-ACT ĐHQG TP.HCM (Đợt 1 & Đợt 2), HSA ĐHQG Hà Nội & TSA Bách Khoa
+            Lịch thi chuẩn hóa THPTQG 2027, V-ACT, HSA (6 đợt), TSA (3 đợt), H-SCA Sư phạm TP.HCM & SPT Sư phạm Hà Nội (tham chiếu thực tế 2026)
           </p>
         </div>
 
@@ -261,34 +261,48 @@ export const CountdownGrid: React.FC<CountdownGridProps> = ({ exams, onUpdateExa
                   {exam.description}
                 </p>
 
-                {/* Sub-rounds Switcher (e.g. V-ACT Đợt 1 & Đợt 2) */}
+                {/* Sub-rounds Switcher (e.g. V-ACT, HSA, TSA, H-SCA, SPT) */}
                 {exam.subRounds && exam.subRounds.length > 0 && (
-                  <div className="mt-3 p-1 bg-white/80 backdrop-blur-xs rounded-2xl border border-stone-200/80 flex items-center gap-1">
-                    {exam.subRounds.map((sr) => {
-                      const isRoundActive = (selectedSubRound[exam.id] || exam.subRounds![0].id) === sr.id;
-                      const srTime = times[sr.id];
-                      return (
-                        <button
-                          key={sr.id}
-                          type="button"
-                          onClick={() => setSelectedSubRound((prev) => ({ ...prev, [exam.id]: sr.id }))}
-                          className={`flex-1 py-1 px-2 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${
-                            isRoundActive
-                              ? 'bg-sky-600 text-white font-semibold shadow-2xs'
-                              : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/60'
-                          }`}
-                        >
-                          <span>{sr.name}</span>
-                          {srTime && (
-                            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-                              isRoundActive ? 'bg-sky-700/80 text-white' : 'bg-stone-200 text-stone-600'
-                            }`}>
-                              {srTime.days}d
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
+                  <div className="mt-3">
+                    <div className="p-1 bg-white/85 backdrop-blur-xs rounded-2xl border border-stone-200/80 flex flex-wrap items-center gap-1">
+                      {exam.subRounds.map((sr) => {
+                        const isRoundActive = (selectedSubRound[exam.id] || exam.subRounds![0].id) === sr.id;
+                        const srTime = times[sr.id];
+                        return (
+                          <button
+                            key={sr.id}
+                            type="button"
+                            onClick={() => setSelectedSubRound((prev) => ({ ...prev, [exam.id]: sr.id }))}
+                            className={`flex-1 min-w-[70px] py-1 px-2 rounded-xl text-[11px] font-medium transition-all flex items-center justify-center gap-1 ${
+                              isRoundActive
+                                ? 'bg-stone-900 text-white font-semibold shadow-2xs'
+                                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/70'
+                            }`}
+                          >
+                            <span>{sr.shortName}</span>
+                            {srTime && (
+                              <span className={`text-[10px] px-1 py-0.2 rounded-md font-mono font-bold ${
+                                isRoundActive ? 'bg-stone-700 text-white' : 'bg-stone-200/80 text-stone-600'
+                              }`}>
+                                {srTime.days}d
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Active sub-round description & 2026 reference date */}
+                    {activeSubRound && (
+                      <div className="mt-1.5 px-2 text-[11px] text-stone-500 flex items-center justify-between gap-1">
+                        <span className="truncate">{activeSubRound.description}</span>
+                        {activeSubRound.reference2026 && (
+                          <span className="font-mono text-[10px] bg-stone-100 border border-stone-200 text-stone-600 px-1.5 py-0.5 rounded-md shrink-0">
+                            {activeSubRound.reference2026}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
