@@ -1,0 +1,6 @@
+{
+  "name": "Sĩ Tử 2027 - Đếm Ngược & Lập Lịch Ôn Thi",
+  "description": "Bộ công cụ đếm ngược THPTQG 2027, V-ACT, HSA 2027, ghim nguyện vọng & ngành học mục tiêu, lập lịch học tập thông minh và widget phong cách pastel tối giản.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
