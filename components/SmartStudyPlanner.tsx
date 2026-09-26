@@ -378,10 +378,10 @@ export const SmartStudyPlanner: React.FC<SmartStudyPlannerProps> = ({
             <button
               type="button"
               onClick={() => setIsAllDays(true)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 border ${
                 isAllDays
-                  ? 'bg-stone-900 text-white font-semibold shadow-2xs'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                  ? 'bg-stone-900 text-white font-semibold shadow-2xs border-stone-900'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200 border-transparent'
               }`}
             >
               Cả Tuần
@@ -400,12 +400,12 @@ export const SmartStudyPlanner: React.FC<SmartStudyPlannerProps> = ({
                     setIsAllDays(false);
                     setSelectedDay(d.day);
                   }}
-                  className={`relative px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
+                  className={`relative px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 border ${
                     isSelected
-                      ? 'bg-purple-600 text-white font-semibold shadow-2xs'
+                      ? 'bg-purple-600 text-white font-semibold shadow-2xs border-purple-600'
                       : isToday
-                      ? 'bg-purple-50 text-purple-800 border border-purple-200'
-                      : 'bg-stone-50 text-stone-600 hover:bg-stone-100'
+                      ? 'bg-purple-50 text-purple-800 border-purple-200'
+                      : 'bg-stone-50 text-stone-600 hover:bg-stone-100 border-transparent'
                   }`}
                 >
                   <span>{d.label}</span>
@@ -535,34 +535,41 @@ export const SmartStudyPlanner: React.FC<SmartStudyPlannerProps> = ({
 
                   {/* Task Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                      {/* Subject Tag */}
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold border ${colorInfo.bg} ${colorInfo.text} ${colorInfo.border}`}
-                      >
-                        {task.subject}
-                      </span>
-
-                      {/* Exam Target */}
-                      {task.examTarget && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-stone-100 text-stone-700 border border-stone-200">
-                          {task.examTarget}
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {/* Subject Tag */}
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold border ${colorInfo.bg} ${colorInfo.text} ${colorInfo.border}`}
+                        >
+                          {task.subject}
                         </span>
-                      )}
 
-                      {/* Day label if in "Cả tuần" view */}
-                      {isAllDays && dayObj && (
-                        <span className="text-[11px] font-medium text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded">
-                          {dayObj.label}
-                        </span>
-                      )}
+                        {/* Exam Target */}
+                        {task.examTarget && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-stone-100 text-stone-700 border border-stone-200">
+                            {task.examTarget}
+                          </span>
+                        )}
 
-                      {/* Time slot */}
-                      <span className="inline-flex items-center gap-1 text-[11px] text-stone-500 ml-auto">
+                        {/* Day label if in "Cả tuần" view */}
+                        {isAllDays && dayObj && (
+                          <span className="text-[11px] font-medium text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded">
+                            {dayObj.label}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Time slot badge with logged minutes if synced */}
+                      <span className="inline-flex items-center gap-1 text-[11px] text-stone-600 bg-stone-50 px-2 py-0.5 rounded-md border border-stone-200/60 shrink-0 font-mono">
                         <Clock className="w-3 h-3 text-stone-400" />
                         <span>{task.timeSlot}</span>
                         <span className="text-stone-300">•</span>
                         <span>{task.durationMinutes}p</span>
+                        {task.loggedFocusMinutes !== undefined && task.loggedFocusMinutes > 0 && (
+                          <span className="text-emerald-700 font-semibold ml-0.5 bg-emerald-50 px-1 rounded">
+                            +{task.loggedFocusMinutes}p
+                          </span>
+                        )}
                       </span>
                     </div>
 

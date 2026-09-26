@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Sparkles, Edit3, Flame, Volume2 } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Sparkles, Edit3, Flame, Volume2, CalendarDays } from 'lucide-react';
 import { UserProfile, StudyStats } from '@/types/exam';
 import { playChimeSound } from '@/lib/constants';
 
@@ -19,6 +21,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenOnboarding,
   liveLearnerCount = 1482,
 }) => {
+  const pathname = usePathname();
+
   const currentDateStr = new Date().toLocaleDateString('vi-VN', {
     weekday: 'long',
     day: 'numeric',
@@ -26,35 +30,78 @@ export const Navbar: React.FC<NavbarProps> = ({
     year: 'numeric',
   });
 
+  const navLinks = [
+    { href: '/', label: 'Tổng Quan', icon: '🏠' },
+    { href: '/phong-hoc', label: 'Phòng Học', icon: '📚' },
+  ];
+
   return (
-    <header className="w-full bg-[#FAF8F5]/80 backdrop-blur-md sticky top-0 z-30 border-b border-stone-200/70">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3">
-        {/* Left: Brand Logo & Title */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-200 via-rose-100 to-amber-100 border border-stone-200/80 flex items-center justify-center text-xl shadow-2xs">
-            🎓
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-stone-900 text-base md:text-lg tracking-tight">
-                Sĩ Tử 2027
-              </span>
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200/70">
-                <Sparkles className="w-2.5 h-2.5" />
-                2K9 Bứt Phá
-              </span>
+    <header className="w-full bg-[#FAF8F5]/90 backdrop-blur-md sticky top-0 z-30 border-b border-stone-200/70">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {/* Top / Left: Brand Logo & Title */}
+        <div className="flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-200 via-rose-100 to-amber-100 border border-stone-200/80 flex items-center justify-center text-xl shadow-2xs group-hover:scale-105 transition-transform">
+              🎓
             </div>
-            <div className="text-[11px] text-stone-500 hidden sm:block">
-              {currentDateStr} • Đếm ngược THPTQG, V-ACT & HSA
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-stone-900 text-base md:text-lg tracking-tight">
+                  Sĩ Tử 2027
+                </span>
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200/70">
+                  <Sparkles className="w-2.5 h-2.5" />
+                  2K9 Bứt Phá
+                </span>
+              </div>
+              <div className="text-[11px] text-stone-500 hidden sm:block">
+                {currentDateStr} • THPTQG, V-ACT, HSA, TSA
+              </div>
             </div>
+          </Link>
+
+          {/* Mobile Right: Flame streak */}
+          <div className="flex md:hidden items-center gap-2">
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 border border-amber-200/80 text-xs font-bold text-amber-900 shadow-2xs">
+              <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+              <span>{stats.streakDays}d</span>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenOnboarding}
+              className="p-1.5 rounded-xl bg-white border border-stone-200 text-xs font-semibold text-purple-700 shadow-2xs"
+            >
+              <Edit3 className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        {/* Right: Quick Controls & Goal shortcut & Author Link & Live Learners */}
-        <div className="flex items-center gap-2">
+        {/* Center: Main Page Navigation Links */}
+        <nav className="flex items-center gap-1.5 p-1 bg-stone-200/60 rounded-2xl overflow-x-auto self-start md:self-center w-full md:w-auto">
+          {navLinks.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex-1 md:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs md:text-sm font-bold transition-all shrink-0 border ${
+                  isActive
+                    ? 'bg-white text-stone-900 shadow-xs border-stone-200/80'
+                    : 'text-stone-600 hover:text-stone-950 border-transparent hover:bg-white/50'
+                }`}
+              >
+                <span>{item.icon}</span>
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Right: Controls & Live Counter */}
+        <div className="hidden md:flex items-center gap-2">
           {/* Live Active Learners Badge */}
-          <a
-            href="#live-study-room-section"
+          <Link
+            href="/#live-study-room-section"
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-semibold transition-all shadow-2xs group"
             title="Xem phòng tự học trực tuyến: Sĩ tử 2K9 đang cùng ôn bài!"
           >
@@ -63,15 +110,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
             <span className="font-mono font-bold">{liveLearnerCount.toLocaleString('vi-VN')}</span>
-            <span className="hidden sm:inline text-emerald-700 font-medium text-[11px]">đang học</span>
-          </a>
+            <span className="text-emerald-700 font-medium text-[11px]">đang học</span>
+          </Link>
 
           {/* Author Badge */}
           <a
             href="https://github.com/NIrussVn0"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-stone-100/90 hover:bg-stone-200/80 text-stone-700 hover:text-stone-900 border border-stone-200 text-xs font-semibold transition-all shadow-2xs"
+            className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-stone-100/90 hover:bg-stone-200/80 text-stone-700 hover:text-stone-900 border border-stone-200 text-xs font-semibold transition-all shadow-2xs"
             title="Tác giả / Developer: NirussVn0 (GitHub: @NIrussVn0)"
           >
             <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
@@ -84,7 +131,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200/80 text-xs font-bold text-amber-900 shadow-2xs">
             <Flame className="w-4 h-4 fill-amber-500 text-amber-500" />
             <span>{stats.streakDays}</span>
-            <span className="text-[11px] font-normal text-amber-700 hidden lg:inline">ngày ôn</span>
+            <span className="text-[11px] font-normal text-amber-700 hidden xl:inline">ngày ôn</span>
           </div>
 
           {/* Edit Goals Pin button */}
@@ -92,16 +139,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             id="nav-btn-edit-goal"
             type="button"
             onClick={onOpenOnboarding}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white hover:bg-stone-50 text-stone-800 border border-stone-200 shadow-2xs hover:shadow-xs transition-all active:scale-98"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white hover:bg-stone-50 text-stone-800 border border-stone-200 shadow-2xs hover:shadow-xs transition-all active:scale-98"
           >
             <Edit3 className="w-3.5 h-3.5 text-purple-600" />
-            <span className="hidden sm:inline">
-              {profile.universityShort ? `Mục tiêu: ${profile.universityShort}` : 'Ghim NV1'}
-            </span>
-            <span className="sm:hidden">Mục tiêu</span>
+            <span>{profile.universityShort ? `Mục tiêu: ${profile.universityShort}` : 'Ghim NV1'}</span>
           </button>
 
-          {/* Reset / Test Audio */}
+          {/* Chime Sound */}
           <button
             type="button"
             onClick={() => playChimeSound('complete')}
@@ -115,3 +159,4 @@ export const Navbar: React.FC<NavbarProps> = ({
     </header>
   );
 };
+

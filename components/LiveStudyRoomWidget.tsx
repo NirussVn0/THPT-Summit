@@ -159,7 +159,7 @@ export const LiveStudyRoomWidget: React.FC<LiveStudyRoomWidgetProps> = ({
           <button
             type="button"
             onClick={onToggleUserStudying}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-xs flex items-center gap-2 ${
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 min-w-[145px] shrink-0 ${
               isUserStudying
                 ? 'bg-rose-600 hover:bg-rose-700 text-white'
                 : 'bg-emerald-600 hover:bg-emerald-700 text-white'

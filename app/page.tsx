@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { CalendarDays, BellRing, Sparkles, ArrowRight, BookOpen, Clock, ExternalLink } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { PinnedDreamHero } from '@/components/PinnedDreamHero';
@@ -328,29 +330,36 @@ export default function HomePage() {
           liveCount={liveLearnerCount}
         />
 
-        {/* Two-Column Responsive Section: Study Planner (Left) & Widgets (Right) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start mb-8">
-          {/* Smart Study Planner - 2 Columns wide on large screens */}
-          <div className="lg:col-span-2">
-            <SmartStudyPlanner
-              tasks={tasks}
-              profile={profile}
-              onUpdateTasks={handleUpdateTasks}
-              onTaskCompleted={handleTaskCompleted}
-            />
+        {/* Dedicated Phòng Học Showcase Banner */}
+        <div className="mb-8 p-6 md:p-8 rounded-3xl bg-gradient-to-r from-stone-900 via-purple-950 to-indigo-950 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 max-w-2xl">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-stone-200 text-xs font-bold mb-3 border border-white/15">
+              <span>📚 Phòng Tự Học Hợp Nhất 2K9</span>
+            </div>
+            <h2 className="text-xl md:text-2xl font-extrabold tracking-tight">
+              Phòng Học Sĩ Tử 2027
+            </h2>
+            <p className="text-stone-300 text-xs md:text-sm mt-1.5 leading-relaxed">
+              Không gian tự học tích hợp trọn gói 3 công cụ kỷ luật: <strong>Trạm Pomodoro</strong> tập trung cao độ, <strong>Lập Lịch Học Tập Thông Minh 2K9</strong> và <strong>Chuông Báo Nhắc Nhở</strong> tự động sync ca học.
+            </p>
+            <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-stone-400">
+              <span className="flex items-center gap-1">🍅 Đồng hồ Pomodoro & Zen mode</span>
+              <span>•</span>
+              <span className="flex items-center gap-1">🗓️ Thời khóa biểu 7 ngày & AI Cố vấn</span>
+              <span>•</span>
+              <span className="flex items-center gap-1">🔔 Chuông thông báo ca học</span>
+            </div>
           </div>
 
-          {/* Widgets Sidebar: Pomodoro Focus + Notifications Reminder - 1 Column */}
-          <div className="space-y-6">
-            <PomodoroWidget
-              onSessionCompleted={handleSessionCompleted}
-              onRunningChange={(running) => setIsUserStudying(running)}
-            />
-            <ReminderNotificationCenter
-              reminders={reminders}
-              onUpdateReminders={handleUpdateReminders}
-            />
-          </div>
+          <Link
+            href="/phong-hoc"
+            className="relative z-10 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-white hover:bg-stone-100 text-stone-950 text-sm font-bold shadow-md transition-all shrink-0 self-start md:self-center hover:scale-105 active:scale-98"
+          >
+            <span>Vào Phòng Học</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
 
         {/* Daily Exam Tips & Motivation Quotes Carousel */}
@@ -363,23 +372,13 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 font-medium text-stone-700">
             <span>Sĩ Tử 2027</span>
             <span>•</span>
-            <span className="text-rose-600">Đồng hành cùng thế hệ 2K9 chinh phục kỳ thi GDPT mới</span>
+            <Link href="/" className="hover:text-stone-900">Tổng quan</Link>
             <span>•</span>
-            <span className="text-stone-500">
-              Code by{' '}
-              <a
-                href="https://github.com/NIrussVn0"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono font-semibold text-stone-800 hover:text-purple-700 underline underline-offset-2 transition-colors inline-flex items-center gap-1"
-                title="GitHub: NirussVn0"
-              >
-                <span>NirussVn0</span>
-                <span className="text-[10px] text-stone-400 font-sans font-normal">(GitHub)</span>
-              </a>
-            </span>
+            <Link href="/phong-hoc" className="hover:text-stone-900 font-semibold text-purple-700">Phòng học</Link>
           </div>
           <div className="flex items-center gap-2 text-stone-400 text-[11px] flex-wrap justify-center sm:justify-end">
+            <span>Code by NirussVn0</span>
+            <span>•</span>
             <span>THPTQG 2027</span>
             <span>•</span>
             <span>V-ACT ĐHQG-HCM</span>

@@ -154,7 +154,7 @@ export const ReminderNotificationCenter: React.FC<ReminderNotificationCenterProp
               }`}
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-xs font-mono font-bold text-stone-700 shrink-0">
+                <div className="px-2.5 h-8 min-w-[3.6rem] rounded-xl bg-white border border-stone-200/90 flex items-center justify-center text-xs font-mono font-bold text-stone-800 shrink-0 shadow-2xs tabular-nums">
                   {rem.time}
                 </div>
                 <div className="min-w-0">

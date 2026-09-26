@@ -1,4 +1,4 @@
-import { ExamEvent, ReminderSetting, StudyTask, UserProfile } from '@/types/exam';
+import { ExamEvent, PomodoroSettings, ReminderSetting, StudyTask, UserProfile } from '@/types/exam';
 
 export const POPULAR_UNIVERSITIES = [
   {
@@ -576,6 +576,53 @@ export const DEFAULT_REMINDERS: ReminderSetting[] = [
     enabled: true,
     repeat: 'daily',
     description: 'Giấc ngủ ngon giúp não bộ lưu trữ kiến thức dài hạn. Chúc sĩ tử ngủ ngon!',
+  },
+];
+
+export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
+  focusMinutes: 25,
+  shortBreakMinutes: 5,
+  longBreakMinutes: 15,
+  longBreakInterval: 4,
+  autoStartBreaks: false,
+  autoStartFocus: false,
+  soundEnabled: true,
+  syncWithSchedule: true,
+  ambientSound: 'none',
+};
+
+export const POMODORO_PRESETS = [
+  {
+    id: 'classic',
+    name: 'Tiêu Chuẩn (25/5)',
+    description: 'Phương pháp Pomodoro kinh điển: 25 phút tập trung cao độ, 5 phút xả hơi.',
+    focusMinutes: 25,
+    shortBreakMinutes: 5,
+    longBreakMinutes: 15,
+  },
+  {
+    id: 'ultradian',
+    name: 'Học Sâu Ultradian (50/10)',
+    description: 'Theo nhịp sinh học não bộ: 50 phút tư duy chuyên sâu, 10 phút hồi phục.',
+    focusMinutes: 50,
+    shortBreakMinutes: 10,
+    longBreakMinutes: 20,
+  },
+  {
+    id: 'thptqg-speed',
+    name: 'Thực Chiến THPT (90/15)',
+    description: 'Khớp đúng thời gian làm bài thi môn Toán / Khoa học THPTQG.',
+    focusMinutes: 90,
+    shortBreakMinutes: 15,
+    longBreakMinutes: 25,
+  },
+  {
+    id: 'vact-mock',
+    name: 'Mô Phỏng ĐGNL (150/20)',
+    description: 'Luyện sức bền tâm lý 150 phút cho đề thi ĐGNL ĐHQG-HCM & ĐHQG-HN.',
+    focusMinutes: 150,
+    shortBreakMinutes: 20,
+    longBreakMinutes: 30,
   },
 ];
 

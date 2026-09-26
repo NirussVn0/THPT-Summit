@@ -70,6 +70,19 @@ export interface StudyTask {
   priority: 'high' | 'medium' | 'low';
   examTarget: 'THPTQG' | 'V-ACT' | 'HSA' | 'Tất cả';
   notes?: string;
+  loggedFocusMinutes?: number;
+}
+
+export interface PomodoroSettings {
+  focusMinutes: number; // default 25
+  shortBreakMinutes: number; // default 5
+  longBreakMinutes: number; // default 15
+  longBreakInterval: number; // default 4
+  autoStartBreaks: boolean; // default false
+  autoStartFocus: boolean; // default false
+  soundEnabled: boolean; // default true
+  syncWithSchedule: boolean; // default true
+  ambientSound: 'none' | 'whitenoise' | 'rain' | 'clock' | 'waves';
 }
 
 export interface StudyStats {
