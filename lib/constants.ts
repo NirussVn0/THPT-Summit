@@ -423,6 +423,11 @@ export const DEFAULT_STUDY_TASKS: StudyTask[] = [
     priority: 'high',
     examTarget: 'THPTQG',
     notes: 'Luyện 25 câu trắc nghiệm đúng sai và 5 câu trả lời ngắn',
+    subtasks: [
+      { id: 'sub-1-1', title: 'Làm 15 câu trắc nghiệm nhiều lựa chọn', completed: true },
+      { id: 'sub-1-2', title: 'Giải 5 câu trắc nghiệm đúng/sai', completed: false },
+      { id: 'sub-1-3', title: 'Thực hành 3 câu trả lời ngắn nâng cao', completed: false },
+    ],
   },
   {
     id: 'task-2',
@@ -435,18 +440,26 @@ export const DEFAULT_STUDY_TASKS: StudyTask[] = [
     priority: 'high',
     examTarget: 'V-ACT',
     notes: 'Tập trung dạng đề sắp xếp vị trí và quan hệ logic',
+    subtasks: [
+      { id: 'sub-2-1', title: 'Phân tích bảng sự kiện logic 5 biến', completed: true },
+      { id: 'sub-2-2', title: 'Rèn tốc độ phản xạ dưới 60s/câu', completed: true },
+    ],
   },
   {
     id: 'task-3',
     title: 'Đọc hiểu văn bản hiện đại & Kỹ năng viết đoạn NLXH 200 chữ',
     subject: 'Ngữ Văn',
     dayOfWeek: 3, // Thứ 4
-    timeSlot: '19:30 - 21:00',
-    durationMinutes: 90,
+    timeSlot: '19:30 - 20:30',
+    durationMinutes: 60,
     completed: false,
     priority: 'medium',
     examTarget: 'THPTQG',
     notes: 'Chủ đề: Bản lĩnh và tư duy phản biện của thế hệ trẻ',
+    subtasks: [
+      { id: 'sub-3-1', title: 'Đọc ngữ liệu báo chí ngoài SGK', completed: false },
+      { id: 'sub-3-2', title: 'Viết đoạn văn 200 chữ chuẩn luận điểm', completed: false },
+    ],
   },
   {
     id: 'task-4',
@@ -483,14 +496,19 @@ export const DEFAULT_STUDY_TASKS: StudyTask[] = [
     priority: 'high',
     examTarget: 'V-ACT',
     notes: 'Kiểm tra tốc độ làm bài và chữa kỹ các câu sai vào sổ tay',
+    subtasks: [
+      { id: 'sub-6-1', title: 'Bấm giờ làm bài 150 phút không gián đoạn', completed: false },
+      { id: 'sub-6-2', title: 'So sánh đáp án và tra cứu lỗi sai', completed: false },
+      { id: 'sub-6-3', title: 'Ghi chú 5 bẫy câu hỏi thường gặp', completed: false },
+    ],
   },
   {
     id: 'task-7',
     title: 'Tổng kết tuần, ghi chép sổ lỗi sai & Lập kế hoạch tuần tới',
     subject: 'Toán',
     dayOfWeek: 0, // Chủ nhật
-    timeSlot: '20:00 - 21:00',
-    durationMinutes: 60,
+    timeSlot: '20:00 - 20:45',
+    durationMinutes: 45,
     completed: false,
     priority: 'medium',
     examTarget: 'Tất cả',

@@ -224,10 +224,10 @@ export const CountdownGrid: React.FC<CountdownGridProps> = ({ exams, onUpdateExa
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
-              className={`relative rounded-3xl border ${exam.colorScheme.border} ${exam.colorScheme.bg} p-5 flex flex-col justify-between shadow-xs transition-shadow hover:shadow-sm`}
+              className={`relative rounded-3xl border ${exam.colorScheme.border} ${exam.colorScheme.bg} p-5 flex flex-col shadow-xs transition-shadow hover:shadow-sm h-full`}
             >
-              {/* Card Header */}
-              <div>
+              {/* Card Header (Zone A: Flexible Top Section) */}
+              <div className="flex-1 flex flex-col justify-start mb-4">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <span
                     className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${exam.colorScheme.badgeBg} ${exam.colorScheme.badgeText}`}
@@ -262,7 +262,7 @@ export const CountdownGrid: React.FC<CountdownGridProps> = ({ exams, onUpdateExa
                 </p>
 
                 {/* Sub-rounds Switcher (e.g. V-ACT, HSA, TSA, H-SCA, SPT) */}
-                {exam.subRounds && exam.subRounds.length > 0 && (
+                {exam.subRounds && exam.subRounds.length > 0 ? (
                   <div className="mt-3">
                     <div className="p-1 bg-white/85 backdrop-blur-xs rounded-2xl border border-stone-200/80 flex flex-wrap items-center gap-1">
                       {exam.subRounds.map((sr) => {
@@ -304,51 +304,67 @@ export const CountdownGrid: React.FC<CountdownGridProps> = ({ exams, onUpdateExa
                       </div>
                     )}
                   </div>
+                ) : (
+                  <div className="mt-3">
+                    <div className="p-1.5 px-3 bg-white/70 backdrop-blur-xs rounded-2xl border border-stone-200/70 flex items-center justify-between text-xs min-h-[38px]">
+                      <div className="flex items-center gap-1.5 font-medium text-stone-700">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                        </span>
+                        <span className="text-[11px] font-semibold text-stone-800">1 Đợt thi toàn quốc duy nhất</span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg bg-stone-100 text-stone-700 border border-stone-200">
+                        GDPT 2018
+                      </span>
+                    </div>
+                  </div>
                 )}
               </div>
 
-              {/* Countdown Tickers (Days, Hours, Mins, Secs) */}
-              <div className="my-4 pt-3 pb-2 border-y border-stone-200/60">
+              {/* Pinned Bottom Section (Zone B: Anchored from the bottom with mt-auto) */}
+              <div className="mt-auto pt-3 border-t border-stone-200/70">
+                {/* Countdown Tickers (Days, Hours, Mins, Secs) */}
                 <div className="grid grid-cols-4 gap-2 text-center">
                   {/* Days */}
-                  <div className="p-2 rounded-2xl bg-white/90 border border-stone-200/80 shadow-2xs">
-                    <div className="text-xl md:text-2xl font-extrabold text-stone-900 tracking-tight font-mono">
+                  <div className="h-[68px] p-1.5 rounded-2xl bg-white/95 border border-stone-200/80 shadow-2xs flex flex-col items-center justify-center">
+                    <div className="text-xl md:text-2xl font-extrabold text-stone-900 tracking-tight font-mono tabular-nums leading-none">
                       {t.days}
                     </div>
-                    <div className="text-[10px] uppercase font-semibold text-stone-400 tracking-wider mt-0.5">
+                    <div className="text-[10px] uppercase font-semibold text-stone-400 tracking-wider mt-1.5">
                       Ngày
                     </div>
                   </div>
 
                   {/* Hours */}
-                  <div className="p-2 rounded-2xl bg-white/90 border border-stone-200/80 shadow-2xs">
-                    <div className="text-xl md:text-2xl font-extrabold text-stone-900 tracking-tight font-mono">
+                  <div className="h-[68px] p-1.5 rounded-2xl bg-white/95 border border-stone-200/80 shadow-2xs flex flex-col items-center justify-center">
+                    <div className="text-xl md:text-2xl font-extrabold text-stone-900 tracking-tight font-mono tabular-nums leading-none">
                       {String(t.hours).padStart(2, '0')}
                     </div>
-                    <div className="text-[10px] uppercase font-semibold text-stone-400 tracking-wider mt-0.5">
+                    <div className="text-[10px] uppercase font-semibold text-stone-400 tracking-wider mt-1.5">
                       Giờ
                     </div>
                   </div>
 
                   {/* Minutes */}
-                  <div className="p-2 rounded-2xl bg-white/90 border border-stone-200/80 shadow-2xs">
-                    <div className="text-xl md:text-2xl font-extrabold text-stone-900 tracking-tight font-mono">
+                  <div className="h-[68px] p-1.5 rounded-2xl bg-white/95 border border-stone-200/80 shadow-2xs flex flex-col items-center justify-center">
+                    <div className="text-xl md:text-2xl font-extrabold text-stone-900 tracking-tight font-mono tabular-nums leading-none">
                       {String(t.minutes).padStart(2, '0')}
                     </div>
-                    <div className="text-[10px] uppercase font-semibold text-stone-400 tracking-wider mt-0.5">
+                    <div className="text-[10px] uppercase font-semibold text-stone-400 tracking-wider mt-1.5">
                       Phút
                     </div>
                   </div>
 
                   {/* Seconds */}
-                  <div className="p-2 rounded-2xl bg-white/90 border border-stone-200/80 shadow-2xs relative overflow-hidden">
-                    <div className="text-xl md:text-2xl font-extrabold text-rose-600 tracking-tight font-mono">
+                  <div className="h-[68px] p-1.5 rounded-2xl bg-white/95 border border-stone-200/80 shadow-2xs flex flex-col items-center justify-center relative overflow-hidden">
+                    <div className="text-xl md:text-2xl font-extrabold text-rose-600 tracking-tight font-mono tabular-nums leading-none">
                       {String(t.seconds).padStart(2, '0')}
                     </div>
-                    <div className="text-[10px] uppercase font-semibold text-rose-400 tracking-wider mt-0.5">
+                    <div className="text-[10px] uppercase font-semibold text-rose-400 tracking-wider mt-1.5">
                       Giây
                     </div>
-                    <div className="absolute bottom-0 inset-x-0 h-0.5 bg-rose-400/40 animate-pulse" />
+                    <div className="absolute bottom-0 inset-x-0 h-0.5 bg-rose-400/50 animate-pulse" />
                   </div>
                 </div>
 
@@ -365,46 +381,46 @@ export const CountdownGrid: React.FC<CountdownGridProps> = ({ exams, onUpdateExa
                     />
                   </div>
                 </div>
-              </div>
 
-              {/* Card Footer & Tips Toggle */}
-              <div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-stone-500 truncate">
-                    {formattedDate}
-                  </span>
-                  {exam.tips && exam.tips.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setExpandedExamId(isExpanded ? null : exam.id)}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-stone-700 hover:text-stone-900 py-1 px-2 rounded-lg hover:bg-white/60 transition-colors"
+                {/* Card Footer & Tips Toggle */}
+                <div className="mt-3 pt-2.5 border-t border-stone-200/60">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-stone-500 truncate">
+                      {formattedDate}
+                    </span>
+                    {exam.tips && exam.tips.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedExamId(isExpanded ? null : exam.id)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-stone-700 hover:text-stone-900 py-1 px-2 rounded-lg hover:bg-white/60 transition-colors shrink-0"
+                      >
+                        <span>{isExpanded ? 'Ẩn mẹo' : 'Mẹo thi'}</span>
+                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Expandable Tips Panel */}
+                  {isExpanded && exam.tips && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-3 pt-3 border-t border-stone-200/70 text-xs text-stone-700 space-y-1.5"
                     >
-                      <span>{isExpanded ? 'Ẩn mẹo' : 'Mẹo thi'}</span>
-                      {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                    </button>
+                      <div className="font-semibold text-stone-900 flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Chiến thuật ghi điểm:</span>
+                      </div>
+                      {exam.tips.map((tip, idx) => (
+                        <div key={idx} className="flex items-start gap-1.5 pl-1">
+                          <span className="text-stone-400 select-none">•</span>
+                          <span>{tip}</span>
+                        </div>
+                      ))}
+                    </motion.div>
                   )}
                 </div>
-
-                {/* Expandable Tips Panel */}
-                {isExpanded && exam.tips && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mt-3 pt-3 border-t border-stone-200/70 text-xs text-stone-700 space-y-1.5"
-                  >
-                    <div className="font-semibold text-stone-900 flex items-center gap-1">
-                      <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Chiến thuật ghi điểm:</span>
-                    </div>
-                    {exam.tips.map((tip, idx) => (
-                      <div key={idx} className="flex items-start gap-1.5 pl-1">
-                        <span className="text-stone-400 select-none">•</span>
-                        <span>{tip}</span>
-                      </div>
-                    ))}
-                  </motion.div>
-                )}
               </div>
             </motion.div>
           );

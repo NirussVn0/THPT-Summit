@@ -59,6 +59,12 @@ export type SubjectTag =
   | 'Khoa Học Tự Nhiên'
   | 'Khoa Học Xã Hội';
 
+export interface SubTaskItem {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 export interface StudyTask {
   id: string;
   title: string;
@@ -71,6 +77,7 @@ export interface StudyTask {
   examTarget: 'THPTQG' | 'V-ACT' | 'HSA' | 'Tất cả';
   notes?: string;
   loggedFocusMinutes?: number;
+  subtasks?: SubTaskItem[];
 }
 
 export interface PomodoroSettings {

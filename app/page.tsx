@@ -2,16 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { CalendarDays, BellRing, Sparkles, ArrowRight, BookOpen, Clock, ExternalLink } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { PinnedDreamHero } from '@/components/PinnedDreamHero';
 import { CountdownGrid } from '@/components/CountdownGrid';
-import { SmartStudyPlanner } from '@/components/SmartStudyPlanner';
-import { PomodoroWidget } from '@/components/PomodoroWidget';
-import { ReminderNotificationCenter } from '@/components/ReminderNotificationCenter';
 import { DailyTipsWidget } from '@/components/DailyTipsWidget';
 import { LiveStudyRoomWidget } from '@/components/LiveStudyRoomWidget';
+import { EducationNewsWidget } from '@/components/EducationNewsWidget';
 import { UserProfile, ExamEvent, StudyTask, StudyStats, ReminderSetting } from '@/types/exam';
 import {
   DEFAULT_USER_PROFILE,
@@ -361,6 +359,9 @@ export default function HomePage() {
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
+
+        {/* Bản Tin Giáo Dục & Tuyển Sinh 2027 */}
+        <EducationNewsWidget />
 
         {/* Daily Exam Tips & Motivation Quotes Carousel */}
         <DailyTipsWidget />
