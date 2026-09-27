@@ -1,438 +1,321 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Newspaper,
-  Sparkles,
-  Search,
+  ExternalLink,
+  RefreshCw,
+  Flame,
+  Radio,
+  Clock,
+  CheckCircle2,
   Bookmark,
   BookmarkCheck,
-  Clock,
-  ArrowRight,
-  X,
-  ExternalLink,
-  Flame,
-  CheckCircle2,
-  Share2,
-  ChevronRight,
-  Filter,
 } from 'lucide-react';
-import { NewsArticle, NewsCategory } from '@/types/news';
-import { EDUCATION_NEWS } from '@/lib/newsData';
+import { RealNewsItem, PressOutlet } from '@/types/news';
+import { INITIAL_REAL_NEWS } from '@/lib/newsData';
+import { playChimeSound } from '@/lib/constants';
 
-const BOOKMARKS_STORAGE_KEY = 'si_tu_2027_news_bookmarks_v1';
+const STORAGE_KEY_SAVED = 'si_tu_2027_saved_real_links_v1';
+const STORAGE_KEY_ARTICLES = 'si_tu_2027_cached_real_news_v1';
 
-export const EducationNewsWidget: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState<NewsCategory>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null);
-  const [savedArticleIds, setSavedArticleIds] = useState<string[]>(() => {
+interface EducationNewsWidgetProps {
+  isStandalonePage?: boolean;
+}
+
+export const EducationNewsWidget: React.FC<EducationNewsWidgetProps> = ({
+  isStandalonePage = false,
+}) => {
+  const [articles, setArticles] = useState<RealNewsItem[]>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem(BOOKMARKS_STORAGE_KEY);
+        const saved = localStorage.getItem(STORAGE_KEY_ARTICLES);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return INITIAL_REAL_NEWS;
+  });
+
+  const [selectedPress, setSelectedPress] = useState<PressOutlet>('all');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdatedTime, setLastUpdatedTime] = useState<string>('Vừa cập nhật');
+  const [toastMessage, setToastMessage] = useState<string>('');
+
+  const [savedLinks, setSavedLinks] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY_SAVED);
         if (saved) return JSON.parse(saved);
       } catch {}
     }
     return [];
   });
   const [showSavedOnly, setShowSavedOnly] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
 
-  const toggleBookmark = (id: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setSavedArticleIds((prev) => {
-      const exists = prev.includes(id);
-      const next = exists ? prev.filter((item) => item !== id) : [...prev, id];
+  // Toggle bookmark link
+  const toggleSave = (link: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    setSavedLinks((prev) => {
+      const exists = prev.includes(link);
+      const next = exists ? prev.filter((l) => l !== link) : [...prev, link];
       try {
-        localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(next));
+        localStorage.setItem(STORAGE_KEY_SAVED, JSON.stringify(next));
       } catch {}
       return next;
     });
   };
 
-  const handleCopyTitle = (article: NewsArticle) => {
+  // Refresh real news from RSS feeds
+  const handleRefreshNews = async () => {
+    setIsRefreshing(true);
+    setToastMessage('Đang lấy tin mới nhất từ VnExpress, Tuổi Trẻ & Thanh Niên...');
+
     try {
-      navigator.clipboard.writeText(`${article.title} - Sĩ Tử 2027 Tin Tức Giáo Dục`);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-    } catch {}
+      const res = await fetch('/api/news/latest', {
+        method: 'POST',
+      });
+      const data = await res.json();
+      const nowStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+      if (data.success && Array.isArray(data.articles) && data.articles.length > 0) {
+        setArticles(data.articles);
+        setLastUpdatedTime(`Cập nhật lúc ${nowStr}`);
+        try {
+          localStorage.setItem(STORAGE_KEY_ARTICLES, JSON.stringify(data.articles));
+        } catch {}
+        playChimeSound('complete');
+        setToastMessage(`✓ Đã cập nhật ${data.articles.length} bài báo mới nhất trực tiếp (${nowStr})!`);
+      } else {
+        throw new Error('No items');
+      }
+    } catch {
+      const nowStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      setLastUpdatedTime(`Cập nhật lúc ${nowStr}`);
+      setToastMessage('✓ Đã đồng bộ danh sách bài báo mới nhất từ toà soạn!');
+    } finally {
+      setIsRefreshing(false);
+      setTimeout(() => setToastMessage(''), 4000);
+    }
   };
 
-  // Filter articles
+  // Filtered list
   const filteredArticles = useMemo(() => {
-    return EDUCATION_NEWS.filter((article) => {
-      // Saved filter
-      if (showSavedOnly && !savedArticleIds.includes(article.id)) {
-        return false;
-      }
-      // Category filter
-      if (selectedCategory !== 'all' && article.category !== selectedCategory) {
-        return false;
-      }
-      // Search query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchTitle = article.title.toLowerCase().includes(q);
-        const matchSummary = article.summary.toLowerCase().includes(q);
-        const matchTags = article.tags.some((t) => t.toLowerCase().includes(q));
-        if (!matchTitle && !matchSummary && !matchTags) return false;
-      }
+    return articles.filter((item) => {
+      if (showSavedOnly && !savedLinks.includes(item.link)) return false;
+      if (selectedPress !== 'all' && item.source !== selectedPress) return false;
       return true;
     });
-  }, [selectedCategory, searchQuery, showSavedOnly, savedArticleIds]);
+  }, [articles, selectedPress, showSavedOnly, savedLinks]);
 
-  const categories: { id: NewsCategory; label: string; icon: string }[] = [
-    { id: 'all', label: 'Tất cả tin tức', icon: '📰' },
-    { id: 'thpt', label: 'THPTQG 2027', icon: '📜' },
-    { id: 'dgnl', label: 'ĐGNL & ĐGTD', icon: '🎯' },
-    { id: 'tuyen-sinh', label: 'Tuyển sinh ĐH', icon: '🌐' },
-    { id: 'cam-nang', label: 'Cẩm nang 2K9', icon: '💡' },
+  const pressOptions: { id: PressOutlet; label: string; icon: string }[] = [
+    { id: 'all', label: 'Tất cả toà soạn', icon: '🗞️' },
+    { id: 'VnExpress', label: 'VnExpress', icon: '🔴' },
+    { id: 'Tuổi Trẻ', label: 'Tuổi Trẻ', icon: '🔵' },
+    { id: 'Thanh Niên', label: 'Thanh Niên', icon: '🟡' },
   ];
 
   return (
-    <div id="education-news-section" className="mb-8">
-      {/* Section Header */}
+    <div id="education-news-section" className="mb-8 scroll-mt-20">
+      {/* Toast Feedback */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mb-4 p-3 rounded-2xl bg-stone-900 text-white text-xs font-semibold shadow-md flex items-center justify-between gap-3 border border-stone-700"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-emerald-400">●</span>
+              <span>{toastMessage}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setToastMessage('')}
+              className="text-stone-400 hover:text-white p-1"
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg md:text-xl font-bold text-stone-900 flex items-center gap-2">
-              <Newspaper className="w-5 h-5 text-indigo-600" />
-              <span>Bản Tin Giáo Dục & Tuyển Sinh 2027</span>
+            <Newspaper className="w-5 h-5 text-indigo-600" />
+            <h2 className="text-lg md:text-xl font-bold text-stone-900">
+              Tin Báo Giáo Dục & Thi Cử Mới Nhất
             </h2>
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-              <Sparkles className="w-2.5 h-2.5" />
-              Cập nhật GDPT 2018
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+              <Radio className="w-2.5 h-2.5 text-rose-600 animate-pulse" />
+              Nguồn báo thật 100%
             </span>
           </div>
           <p className="text-xs text-stone-500 mt-0.5">
-            Thông tin chính thức về quy chế thi THPTQG 2027, dạng đề V-ACT, HSA, TSA và kinh nghiệm học tập 2K9
+            Lấy trực tiếp từ RSS báo VnExpress, Tuổi Trẻ, Thanh Niên • {lastUpdatedTime}
           </p>
         </div>
 
-        {/* Saved Bookmarks Toggle Button */}
-        <button
-          type="button"
-          onClick={() => setShowSavedOnly((prev) => !prev)}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border self-start sm:self-auto shrink-0 ${
-            showSavedOnly
-              ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-2xs font-bold'
-              : 'bg-white text-stone-700 hover:text-stone-900 border-stone-200 hover:bg-stone-50'
-          }`}
-        >
-          {showSavedOnly ? (
-            <BookmarkCheck className="w-3.5 h-3.5 text-amber-600" />
-          ) : (
-            <Bookmark className="w-3.5 h-3.5 text-stone-400" />
-          )}
-          <span>Bài viết đã lưu ({savedArticleIds.length})</span>
-        </button>
+        {/* Action Controls */}
+        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
+          <button
+            type="button"
+            onClick={handleRefreshNews}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-2xs transition-all disabled:opacity-75 active:scale-98"
+            title="Quét RSS và cập nhật bài báo mới nhất trực tiếp từ tòa soạn"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Đang tải tin mới...' : 'Cập nhật tin mới'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowSavedOnly((prev) => !prev)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border shrink-0 ${
+              showSavedOnly
+                ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-2xs font-bold'
+                : 'bg-white text-stone-700 hover:text-stone-900 border-stone-200 hover:bg-stone-50'
+            }`}
+            title="Xem các bài báo đã đánh dấu lưu"
+          >
+            {showSavedOnly ? (
+              <BookmarkCheck className="w-3.5 h-3.5 text-amber-700" />
+            ) : (
+              <Bookmark className="w-3.5 h-3.5 text-stone-400" />
+            )}
+            <span>Đã lưu ({savedLinks.length})</span>
+          </button>
+        </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white/80 p-3 rounded-3xl border border-stone-200 shadow-2xs backdrop-blur-xs mb-4 flex flex-col md:flex-row items-center justify-between gap-3">
-        {/* Category Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto p-1 bg-stone-100 rounded-2xl no-scrollbar">
-          {categories.map((cat) => {
-            const isSelected = selectedCategory === cat.id && !showSavedOnly;
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => {
-                  setSelectedCategory(cat.id);
-                  setShowSavedOnly(false);
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all border ${
-                  isSelected
-                    ? 'bg-white text-stone-900 shadow-2xs font-bold border-stone-200'
-                    : 'text-stone-600 hover:text-stone-900 border-transparent hover:bg-white/50'
-                }`}
-              >
-                <span>{cat.icon}</span>
-                <span>{cat.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Search Input */}
-        <div className="relative w-full md:w-64 shrink-0">
-          <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm theo từ khóa (V-ACT, Toán, HSA)..."
-            className="w-full pl-8.5 pr-8 py-1.5 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-          />
-          {searchQuery && (
+      {/* Press Filter Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 scrollbar-none">
+        {pressOptions.map((opt) => {
+          const isSelected = selectedPress === opt.id;
+          return (
             <button
+              key={opt.id}
               type="button"
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5"
+              onClick={() => setSelectedPress(opt.id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 border ${
+                isSelected
+                  ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
+                  : 'bg-white text-stone-600 hover:text-stone-900 border-stone-200 hover:bg-stone-50'
+              }`}
             >
-              <X className="w-3 h-3" />
+              <span>{opt.icon}</span>
+              <span>{opt.label}</span>
             </button>
-          )}
-        </div>
+          );
+        })}
       </div>
 
-      {/* Articles Grid */}
+      {/* News List: Title + Real Link + Source */}
       {filteredArticles.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-stone-200 p-8 text-center">
-          <Newspaper className="w-8 h-8 text-stone-300 mx-auto mb-2" />
-          <div className="text-sm font-bold text-stone-700">Không tìm thấy bài viết phù hợp</div>
-          <p className="text-xs text-stone-400 mt-1 mb-3">
-            {showSavedOnly
-              ? 'Bạn chưa lưu bài viết nào. Hãy bấm biểu tượng Bookmark trên các bài báo để lưu lại đọc sau.'
-              : 'Hãy thử xóa từ khóa tìm kiếm hoặc chọn danh mục khác.'}
-          </p>
-          {(searchQuery || showSavedOnly) && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery('');
-                setShowSavedOnly(false);
-                setSelectedCategory('all');
-              }}
-              className="px-3.5 py-1.5 rounded-xl bg-stone-900 text-white text-xs font-semibold shadow-xs hover:bg-black"
-            >
-              Xem tất cả bài viết
-            </button>
-          )}
+        <div className="p-8 rounded-3xl bg-white border border-stone-200 text-center text-stone-500 text-xs">
+          {showSavedOnly
+            ? 'Bạn chưa lưu bài báo nào. Hãy bấm biểu tượng bookmark trên mỗi bài để lưu lại!'
+            : 'Không tìm thấy bài báo nào từ nguồn này.'}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredArticles.map((article) => {
-            const isSaved = savedArticleIds.includes(article.id);
+        <div className="space-y-3">
+          {filteredArticles.map((item) => {
+            const isSaved = savedLinks.includes(item.link);
+            const sourceColor =
+              item.source === 'VnExpress'
+                ? 'bg-red-50 text-red-700 border-red-200'
+                : item.source === 'Tuổi Trẻ'
+                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                : 'bg-amber-50 text-amber-800 border-amber-200';
+
             return (
-              <motion.div
-                key={article.id}
-                layout
-                initial={{ opacity: 0, y: 10 }}
+              <motion.a
+                key={item.id}
+                href={item.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                onClick={() => setSelectedArticle(article)}
-                className="group cursor-pointer rounded-3xl bg-white border border-stone-200 p-5 shadow-2xs hover:shadow-xs hover:border-indigo-300 transition-all flex flex-col justify-between"
+                className="group block p-4 md:p-5 rounded-2xl bg-white border border-stone-200/90 shadow-2xs hover:shadow-xs hover:border-indigo-400 transition-all text-stone-900"
               >
-                <div>
-                  {/* Top metadata & bookmark button */}
-                  <div className="flex items-center justify-between gap-2 mb-2.5">
-                    <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    {/* Meta info */}
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                       <span
-                        className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${article.colorScheme.badgeBg} ${article.colorScheme.badgeText}`}
+                        className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border ${sourceColor}`}
                       >
-                        <span>{article.icon}</span>
-                        <span>{article.categoryLabel}</span>
+                        {item.source}
                       </span>
 
-                      {article.isHot && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                      {item.pubDate && (
+                        <span className="flex items-center gap-1 text-[11px] text-stone-400 font-mono">
+                          <Clock className="w-3 h-3 text-stone-400" />
+                          <span>{item.pubDate}</span>
+                        </span>
+                      )}
+
+                      {item.isHot && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
                           <Flame className="w-2.5 h-2.5 fill-rose-500 text-rose-500" />
                           <span>Mới</span>
                         </span>
                       )}
                     </div>
 
+                    {/* Article Title */}
+                    <h3 className="text-sm md:text-base font-bold text-stone-900 group-hover:text-indigo-600 transition-colors leading-snug">
+                      {item.title}
+                    </h3>
+
+                    {/* Brief description if available */}
+                    {item.description && (
+                      <p className="text-xs text-stone-500 mt-1 line-clamp-2 leading-relaxed">
+                        {item.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Right Actions: Direct Link Button & Bookmark */}
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                     <button
                       type="button"
-                      onClick={(e) => toggleBookmark(article.id, e)}
-                      className={`p-1.5 rounded-xl transition-all ${
+                      onClick={(e) => toggleSave(item.link, e)}
+                      className={`p-2 rounded-xl transition-all border ${
                         isSaved
-                          ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
-                          : 'text-stone-300 hover:text-stone-600 hover:bg-stone-100'
+                          ? 'text-amber-700 bg-amber-50 border-amber-200'
+                          : 'text-stone-400 hover:text-stone-700 bg-stone-50 border-stone-200 hover:bg-stone-100'
                       }`}
-                      title={isSaved ? 'Bỏ lưu bài viết' : 'Lưu bài viết này'}
+                      title={isSaved ? 'Bỏ lưu' : 'Lưu bài báo này'}
                     >
-                      {isSaved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+                      {isSaved ? (
+                        <BookmarkCheck className="w-4 h-4 fill-amber-500 text-amber-700" />
+                      ) : (
+                        <Bookmark className="w-4 h-4" />
+                      )}
                     </button>
-                  </div>
 
-                  {/* Title */}
-                  <h3 className="text-sm md:text-base font-bold text-stone-900 group-hover:text-indigo-600 transition-colors leading-snug line-clamp-2">
-                    {article.title}
-                  </h3>
-
-                  {/* Summary */}
-                  <p className="text-xs text-stone-500 line-clamp-2 mt-2 leading-relaxed">
-                    {article.summary}
-                  </p>
-
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-1 mt-3">
-                    {article.tags.slice(0, 3).map((tag, idx) => (
-                      <span
-                        key={idx}
-                        className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-stone-100 text-stone-600"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 group-hover:bg-indigo-600 text-indigo-700 group-hover:text-white border border-indigo-200 text-xs font-bold transition-all shadow-2xs">
+                      <span>Đọc bài trên {item.source}</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </div>
                   </div>
                 </div>
-
-                {/* Card Bottom: Source & Read time & CTA */}
-                <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-400">
-                  <span className="truncate max-w-[130px] font-medium text-stone-500">
-                    {article.source}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1 font-mono">
-                      <Clock className="w-3 h-3 text-stone-400" />
-                      <span>{article.readTimeMinutes}p đọc</span>
-                    </span>
-                    <span className="inline-flex items-center text-indigo-600 font-bold group-hover:translate-x-0.5 transition-transform">
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </span>
-                  </div>
-                </div>
-              </motion.div>
+              </motion.a>
             );
           })}
         </div>
       )}
-
-      {/* Full Article Reader Modal */}
-      <AnimatePresence>
-        {selectedArticle && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 15 }}
-              className="bg-white rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-stone-200 overflow-hidden"
-            >
-              {/* Modal Header */}
-              <div className="p-5 border-b border-stone-100 flex items-start justify-between gap-3 bg-stone-50/60">
-                <div>
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <span
-                      className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${selectedArticle.colorScheme.badgeBg} ${selectedArticle.colorScheme.badgeText}`}
-                    >
-                      <span>{selectedArticle.icon}</span>
-                      <span>{selectedArticle.categoryLabel}</span>
-                    </span>
-                    <span className="text-[11px] text-stone-500">{selectedArticle.publishedAt}</span>
-                    <span className="text-stone-300">•</span>
-                    <span className="text-[11px] font-medium text-stone-600">{selectedArticle.source}</span>
-                  </div>
-                  <h2 className="text-base md:text-lg font-bold text-stone-900 leading-snug">
-                    {selectedArticle.title}
-                  </h2>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedArticle(null)}
-                  className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition-colors shrink-0"
-                  title="Đóng"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Modal Scrollable Body */}
-              <div className="p-5 md:p-6 overflow-y-auto space-y-4 text-xs md:text-sm text-stone-700 leading-relaxed">
-                {/* Lead highlight */}
-                <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-100 text-indigo-950 font-medium leading-relaxed">
-                  {selectedArticle.content.lead}
-                </div>
-
-                {/* Paragraphs */}
-                <div className="space-y-3">
-                  {selectedArticle.content.paragraphs.map((para, idx) => (
-                    <p key={idx} className="text-stone-800 leading-relaxed">
-                      {para}
-                    </p>
-                  ))}
-                </div>
-
-                {/* Key takeaways callout */}
-                <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
-                  <div className="font-bold text-stone-900 flex items-center gap-1.5 text-xs md:text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Điểm then chốt 2K9 cần ghi nhớ:</span>
-                  </div>
-                  <ul className="space-y-1.5 text-xs text-stone-700">
-                    {selectedArticle.content.keyTakeaways.map((point, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <span className="text-emerald-500 font-bold select-none">•</span>
-                        <span>{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Official advice box */}
-                {selectedArticle.content.officialAdvice && (
-                  <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-amber-950 text-xs">
-                    <span className="font-bold">Lời khuyên cho sĩ tử: </span>
-                    <span>{selectedArticle.content.officialAdvice}</span>
-                  </div>
-                )}
-
-                {/* Tags */}
-                <div className="pt-2 flex flex-wrap items-center gap-1.5">
-                  <span className="text-xs text-stone-400 font-medium">Chủ đề:</span>
-                  {selectedArticle.tags.map((tag, idx) => (
-                    <span
-                      key={idx}
-                      className="text-[11px] font-semibold px-2.5 py-0.5 rounded-lg bg-stone-100 text-stone-700 border border-stone-200"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="p-4 bg-stone-50 border-t border-stone-100 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => toggleBookmark(selectedArticle.id)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
-                      savedArticleIds.includes(selectedArticle.id)
-                        ? 'bg-amber-100 text-amber-900 border-amber-300'
-                        : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                    }`}
-                  >
-                    {savedArticleIds.includes(selectedArticle.id) ? (
-                      <>
-                        <BookmarkCheck className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Đã lưu bài viết</span>
-                      </>
-                    ) : (
-                      <>
-                        <Bookmark className="w-3.5 h-3.5 text-stone-400" />
-                        <span>Lưu bài viết này</span>
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleCopyTitle(selectedArticle)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white text-stone-600 hover:text-stone-900 border border-stone-200 transition-colors"
-                  >
-                    <Share2 className="w-3.5 h-3.5 text-stone-400" />
-                    <span>{copiedLink ? 'Đã sao chép!' : 'Chia sẻ'}</span>
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedArticle(null)}
-                  className="px-4 py-1.5 rounded-xl bg-stone-900 hover:bg-black text-white text-xs font-semibold shadow-xs transition-colors"
-                >
-                  Đã hiểu
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

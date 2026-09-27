@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Calendar, Clock, Sparkles, ChevronDown, ChevronUp, AlertCircle, RefreshCw, PlusCircle, Trash2 } from 'lucide-react';
+import { Calendar, Clock, Sparkles, ChevronDown, ChevronUp, AlertCircle, RefreshCw, PlusCircle, Trash2, Newspaper } from 'lucide-react';
 import { ExamEvent } from '@/types/exam';
 
 interface CountdownGridProps {
@@ -388,16 +388,34 @@ export const CountdownGrid: React.FC<CountdownGridProps> = ({ exams, onUpdateExa
                     <span className="text-[11px] text-stone-500 truncate">
                       {formattedDate}
                     </span>
-                    {exam.tips && exam.tips.length > 0 && (
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={() => setExpandedExamId(isExpanded ? null : exam.id)}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-stone-700 hover:text-stone-900 py-1 px-2 rounded-lg hover:bg-white/60 transition-colors shrink-0"
+                        onClick={() => {
+                          const el = document.getElementById('education-news-section');
+                          if (el) {
+                            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          } else {
+                            window.location.href = '/tin-tuc';
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 hover:text-indigo-900 py-1 px-1.5 rounded-lg hover:bg-indigo-50 transition-colors shrink-0"
+                        title="Xem tin tức báo chí mới nhất"
                       >
-                        <span>{isExpanded ? 'Ẩn mẹo' : 'Mẹo thi'}</span>
-                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        <Newspaper className="w-3 h-3 text-indigo-600" />
+                        <span>Tin báo</span>
                       </button>
-                    )}
+                      {exam.tips && exam.tips.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedExamId(isExpanded ? null : exam.id)}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-stone-700 hover:text-stone-900 py-1 px-2 rounded-lg hover:bg-white/60 transition-colors shrink-0"
+                        >
+                          <span>{isExpanded ? 'Ẩn mẹo' : 'Mẹo thi'}</span>
+                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Expandable Tips Panel */}

@@ -1,4 +1,4 @@
-import { ExamEvent, PomodoroSettings, ReminderSetting, StudyTask, UserProfile } from '@/types/exam';
+import { ExamEvent, PomodoroSettings, ReminderSetting, StudyTask, UserProfile, MotivationQuote } from '@/types/exam';
 
 export const POPULAR_UNIVERSITIES = [
   {
@@ -516,26 +516,156 @@ export const DEFAULT_STUDY_TASKS: StudyTask[] = [
   },
 ];
 
-export const MOTIVATION_QUOTES = [
+export const MOTIVATION_QUOTES: MotivationQuote[] = [
   {
-    quote: 'Tương lai thuộc về những ai tin tưởng vào vẻ đẹp của ước mơ của mình.',
-    author: 'Eleanor Roosevelt',
+    quote: 'Không phải tôi quá thông minh, tôi chỉ kiên trì với các vấn đề lâu hơn mà thôi.',
+    author: 'Albert Einstein',
+    role: 'Nhà vật lý đoạt giải Nobel',
   },
   {
-    quote: 'Chiếc vé vào cổng trường đại học mơ ước được in bằng những buổi tối kiên trì ngồi vào bàn học.',
-    author: 'Lời nhắn gửi 2K9',
+    quote: 'Cuộc sống không dễ dàng với bất kỳ ai. Nhưng điều đó có nghĩa gì? Chúng ta phải bền bỉ và trên hết là tự tin vào chính mình.',
+    author: 'Marie Curie',
+    role: 'Nhà khoa học 2 lần đoạt giải Nobel',
   },
   {
-    quote: 'Đừng đợi đến lúc có cảm hứng mới bắt đầu học. Kỷ luật chính là bắt đầu ngay cả khi bạn không có cảm hứng.',
-    author: 'Sĩ Tử Kỷ Luật',
+    quote: 'Không phải vì mọi việc khó khăn mà chúng ta không dám làm, mà chính vì chúng ta không dám làm nên mọi việc mới trở nên khó khăn.',
+    author: 'Seneca',
+    role: 'Triết gia La Mã cổ đại',
   },
   {
-    quote: 'Khổ luyện 300 ngày, tự hào cả một thanh xuân rực rỡ.',
-    author: 'Tiếp sức mùa thi 2027',
+    quote: 'Gốc rễ của học hành thì cay đắng, nhưng hoa quả của nó lại rất ngọt ngào.',
+    author: 'Aristotle',
+    role: 'Đại triết gia Hy Lạp cổ đại',
   },
   {
-    quote: 'Không có điểm số nào là quá cao nếu bạn biến việc ôn luyện thành thói quen mỗi ngày.',
-    author: 'Thủ khoa chia sẻ',
+    quote: 'Bạn có quyền năng đối với tâm trí của mình - chứ không phải những sự kiện bên ngoài. Hãy thấu hiểu điều này, và bạn sẽ tìm thấy sức mạnh nội tại.',
+    author: 'Marcus Aurelius',
+    role: 'Hoàng đế & Triết gia La Mã',
+  },
+  {
+    quote: 'Không có việc gì khó, chỉ sợ lòng không bền. Đào núi và lấp biển, quyết chí ắt làm nên.',
+    author: 'Chủ tịch Hồ Chí Minh',
+    role: 'Lãnh tụ vĩ đại',
+  },
+  {
+    quote: 'Dẫu có thiên tài bẩm sinh, nếu không chăm chỉ học tập thì rốt cuộc cũng trở thành kẻ tầm thường.',
+    author: 'Lê Quý Đôn',
+    role: 'Nhà bác học thời Hậu Lê',
+  },
+  {
+    quote: 'Thiên tài là 1% cảm hứng và 99% mồ hôi nước mắt.',
+    author: 'Thomas Edison',
+    role: 'Nhà phát minh vĩ đại',
+  },
+  {
+    quote: 'Nếu tôi nhìn thấy được xa hơn những người khác, đó là vì tôi đã đứng trên vai của những người khổng lồ.',
+    author: 'Isaac Newton',
+    role: 'Nhà vật lý & toán học vĩ đại',
+  },
+  {
+    quote: 'Bất kể cuộc sống có vẻ khó khăn đến mức nào, luôn có điều gì đó bạn có thể làm và thành công. Điều cốt lõi là đừng bao giờ bỏ cuộc.',
+    author: 'Stephen Hawking',
+    role: 'Nhà vật lý lý thuyết',
+  },
+  {
+    quote: 'Thời gian của bạn là hữu hạn, đừng lãng phí nó để sống cuộc đời của người khác.',
+    author: 'Steve Jobs',
+    role: 'Đồng sáng lập Apple',
+  },
+  {
+    quote: 'Mọi việc dường như là bất khả thi cho đến khi nó được hoàn thành.',
+    author: 'Nelson Mandela',
+    role: 'Nhà hoạt động đoạt giải Nobel Hòa bình',
+  },
+  {
+    quote: 'Thành công không phải là vĩnh viễn, thất bại cũng không phải là chung cuộc: chính lòng can đảm để bước tiếp mới là điều quyết định.',
+    author: 'Winston Churchill',
+    role: 'Thủ tướng Anh thời Thế chiến II',
+  },
+  {
+    quote: 'Rèn luyện làm cho trí tuệ sáng tỏ, sự lười biếng làm cho tâm trí bị rỉ sét.',
+    author: 'Leonardo da Vinci',
+    role: 'Danh họa & Bác học thời Phục hưng',
+  },
+  {
+    quote: 'Biết mà không học thì không thể hiểu sâu; học mà không suy nghĩ thì uổng công; suy nghĩ mà không học thì nguy hiểm.',
+    author: 'Khổng Tử',
+    role: 'Nhà tư tưởng & giáo dục cổ đại',
+  },
+  {
+    quote: 'Tôi không sợ người luyện 10.000 cú đá khác nhau, tôi chỉ sợ người luyện một cú đá 10.000 lần.',
+    author: 'Lý Tiểu Long (Bruce Lee)',
+    role: 'Huyền thoại võ thuật & Triết gia',
+  },
+  {
+    quote: 'Hãy cho tôi 6 giờ để đốn một cái cây, và tôi sẽ dành 4 giờ đầu tiên để mài sắc lưỡi rìu.',
+    author: 'Abraham Lincoln',
+    role: 'Tổng thống thứ 16 của Hoa Kỳ',
+  },
+  {
+    quote: 'Đầu tư vào tri thức luôn mang lại lợi tức cao nhất.',
+    author: 'Benjamin Franklin',
+    role: 'Học giả & Nhà lập quốc Hoa Kỳ',
+  },
+  {
+    quote: 'Bí quyết để tiến lên phía trước là hãy bắt đầu ngay bây giờ.',
+    author: 'Mark Twain',
+    role: 'Đại văn hào người Mỹ',
+  },
+  {
+    quote: 'Người có lý do đủ lớn để sống có thể vượt qua hầu như mọi thử thách.',
+    author: 'Friedrich Nietzsche',
+    role: 'Triết gia vĩ đại',
+  },
+  {
+    quote: 'Tương lai có rất nhiều tên gọi: Đối với kẻ yếu, nó là Điều không thể; Đối với kẻ do dự, nó là Điều chưa biết; Đối với người dũng cảm, nó là Cơ hội.',
+    author: 'Victor Hugo',
+    role: 'Đại văn hào nước Pháp',
+  },
+  {
+    quote: 'Nên thợ nên thầy vì có học, no ăn no mặc bởi hay làm.',
+    author: 'Nguyễn Trãi',
+    role: 'Đại danh nhân văn hóa thế giới',
+  },
+  {
+    quote: 'Tôi tư duy, nên tôi tồn tại.',
+    author: 'René Descartes',
+    role: 'Triết gia & Nhà toán học',
+  },
+  {
+    quote: 'Một cuộc đời không được tự vấn và trau dồi là một cuộc đời không đáng sống.',
+    author: 'Socrates',
+    role: 'Đại triết gia Hy Lạp cổ đại',
+  },
+  {
+    quote: 'Không phải loài mạnh nhất hay thông minh nhất sẽ sinh tồn, mà là loài thích nghi tốt nhất với sự thay đổi.',
+    author: 'Charles Darwin',
+    role: 'Nhà tự nhiên học',
+  },
+  {
+    quote: 'Nếu một việc thực sự đủ quan trọng, bạn hãy bắt tay làm nó ngay cả khi khả năng thành công có vẻ không cao.',
+    author: 'Elon Musk',
+    role: 'Kỹ sư & Nhà sáng lập SpaceX',
+  },
+  {
+    quote: 'Cơ hội chỉ mỉm cười với những tâm trí đã được chuẩn bị kỹ càng.',
+    author: 'Louis Pasteur',
+    role: 'Nhà hóa học & sinh học tiên phong',
+  },
+  {
+    quote: 'Đường đi dù gần không bước không tới; việc dù nhỏ không làm không thành.',
+    author: 'Tuân Tử',
+    role: 'Triết gia Nho gia thời Chiến Quốc',
+  },
+  {
+    quote: 'Dù bạn nghĩ mình có thể hay không thể, bạn đều đúng.',
+    author: 'Henry Ford',
+    role: 'Nhà sáng lập Ford Motor',
+  },
+  {
+    quote: 'Hành trình vạn dặm bắt đầu từ một bước chân dưới gót.',
+    author: 'Lão Tử',
+    role: 'Triết gia Đạo gia cổ đại',
   },
 ];
 

@@ -1,28 +1,14 @@
-export type NewsCategory = 'all' | 'thpt' | 'dgnl' | 'tuyen-sinh' | 'cam-nang';
+export type PressOutlet = 'all' | 'VnExpress' | 'Tuổi Trẻ' | 'Thanh Niên';
 
-export interface NewsArticle {
+export interface RealNewsItem {
   id: string;
   title: string;
-  summary: string;
-  category: 'thpt' | 'dgnl' | 'tuyen-sinh' | 'cam-nang';
-  categoryLabel: string;
-  source: string;
-  publishedAt: string;
-  readTimeMinutes: number;
-  important?: boolean;
+  link: string;
+  source: 'VnExpress' | 'Tuổi Trẻ' | 'Thanh Niên';
+  pubDate: string;
+  description?: string;
   isHot?: boolean;
-  tags: string[];
-  icon: string;
-  colorScheme: {
-    badgeBg: string;
-    badgeText: string;
-    border: string;
-    accent: string;
-  };
-  content: {
-    lead: string;
-    paragraphs: string[];
-    keyTakeaways: string[];
-    officialAdvice?: string;
-  };
 }
+
+// Backward compatibility alias
+export type NewsArticle = RealNewsItem;

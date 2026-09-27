@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Lightbulb, ChevronRight, ChevronLeft, Quote, Sparkles, Copy, Check } from 'lucide-react';
+import { Lightbulb, ChevronRight, ChevronLeft, Quote, Sparkles, Copy, Check, Dices } from 'lucide-react';
 import { MOTIVATION_QUOTES } from '@/lib/constants';
 
 const EXAM_TIPS = [
@@ -64,9 +64,22 @@ export const DailyTipsWidget: React.FC = () => {
     setQuoteIndex((prev) => (prev + 1) % MOTIVATION_QUOTES.length);
   };
 
+  const handlePrevQuote = () => {
+    setQuoteIndex((prev) => (prev - 1 + MOTIVATION_QUOTES.length) % MOTIVATION_QUOTES.length);
+  };
+
+  const handleRandomQuote = () => {
+    let nextIdx = Math.floor(Math.random() * MOTIVATION_QUOTES.length);
+    if (nextIdx === quoteIndex && MOTIVATION_QUOTES.length > 1) {
+      nextIdx = (nextIdx + 1) % MOTIVATION_QUOTES.length;
+    }
+    setQuoteIndex(nextIdx);
+  };
+
   const handleCopyQuote = () => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(`"${currentQuote.quote}" — ${currentQuote.author}`);
+      const authorText = currentQuote.role ? `${currentQuote.author} (${currentQuote.role})` : currentQuote.author;
+      navigator.clipboard.writeText(`"${currentQuote.quote}" — ${authorText}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -132,8 +145,8 @@ export const DailyTipsWidget: React.FC = () => {
                 <Quote className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-stone-900">Câu Nói Tiếp Lửa Mỗi Ngày</h3>
-                <p className="text-[11px] text-stone-500">Giữ vững niềm tin trên chặng đường 2027</p>
+                <h3 className="text-sm font-bold text-stone-900">Danh Ngôn Tiếp Lửa Mỗi Ngày</h3>
+                <p className="text-[11px] text-stone-500">Lời răn & triết lý kiên trì từ các danh nhân kiệt xuất</p>
               </div>
             </div>
 
@@ -141,7 +154,7 @@ export const DailyTipsWidget: React.FC = () => {
               type="button"
               onClick={handleCopyQuote}
               className="p-1.5 rounded-xl text-stone-400 hover:text-purple-700 hover:bg-white transition-colors"
-              title="Sao chép câu nói"
+              title="Sao chép danh ngôn"
             >
               {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
             </button>
@@ -151,8 +164,13 @@ export const DailyTipsWidget: React.FC = () => {
             <blockquote className="text-xs md:text-sm font-medium text-stone-800 italic leading-relaxed">
               &ldquo;{currentQuote.quote}&rdquo;
             </blockquote>
-            <div className="text-right text-xs font-semibold text-purple-700 mt-2">
-              — {currentQuote.author}
+            <div className="text-right text-xs font-semibold text-purple-800 mt-2 flex items-center justify-end gap-1.5 flex-wrap">
+              <span>— {currentQuote.author}</span>
+              {currentQuote.role && (
+                <span className="text-[11px] text-stone-500 font-normal">
+                  ({currentQuote.role})
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -162,14 +180,35 @@ export const DailyTipsWidget: React.FC = () => {
             {quoteIndex + 1} / {MOTIVATION_QUOTES.length}
           </span>
 
-          <button
-            type="button"
-            onClick={handleNextQuote}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-purple-700 hover:text-purple-900 py-1 px-2 rounded-lg hover:bg-purple-100/50 transition-colors"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Đổi câu khác</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handlePrevQuote}
+              className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-purple-100/50 transition-colors"
+              title="Câu trước"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleNextQuote}
+              className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-purple-100/50 transition-colors"
+              title="Câu kế tiếp"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleRandomQuote}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-purple-700 hover:text-purple-900 py-1 px-2 rounded-lg hover:bg-purple-100/50 transition-colors ml-1"
+              title="Chọn ngẫu nhiên một danh ngôn khác"
+            >
+              <Dices className="w-3.5 h-3.5" />
+              <span>Ngẫu nhiên</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

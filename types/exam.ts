@@ -108,3 +108,10 @@ export interface ReminderSetting {
   repeat: 'daily' | 'weekdays' | 'custom';
   description: string;
 }
+
+export interface MotivationQuote {
+  quote: string;
+  author: string;
+  role?: string;
+}
+
