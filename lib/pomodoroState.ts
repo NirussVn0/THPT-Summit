@@ -22,8 +22,22 @@ export interface GlobalPomodoroState {
 }
 
 const STORAGE_POMODORO_GLOBAL_KEY = 'si_tu_2027_pomodoro_global_v2';
+const STORAGE_SYNCED_DAY_KEY = 'si_tu_2027_synced_day_v1';
 const STORAGE_TASKS_KEY = 'si_tu_2027_tasks_v1';
 const STORAGE_STATS_KEY = 'si_tu_2027_stats_v1';
+
+function getInitialSyncedDay(): number {
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem(STORAGE_SYNCED_DAY_KEY);
+      if (saved !== null) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 0 && parsed <= 6) return parsed;
+      }
+    } catch {}
+  }
+  return new Date().getDay();
+}
 
 const DEFAULT_STATE: GlobalPomodoroState = {
   isRunning: false,
@@ -33,13 +47,13 @@ const DEFAULT_STATE: GlobalPomodoroState = {
   endTimestamp: null,
   activeTaskId: null,
   activeExamTarget: null,
-  syncedDay: new Date().getDay(),
+  syncedDay: 1, // Will be hydrated in getGlobalPomodoroState
   isVisible: false,
   isExpanded: false,
   completedSessions: 0,
 };
 
-let memoryState: GlobalPomodoroState = { ...DEFAULT_STATE };
+let memoryState: GlobalPomodoroState = { ...DEFAULT_STATE, syncedDay: getInitialSyncedDay() };
 let isInitialized = false;
 let tickInterval: NodeJS.Timeout | null = null;
 const listeners = new Set<(state: GlobalPomodoroState) => void>();
@@ -130,6 +144,9 @@ export function setGlobalPomodoroState(
 
   if (typeof window !== 'undefined') {
     try {
+      if (typeof next.syncedDay === 'number') {
+        localStorage.setItem(STORAGE_SYNCED_DAY_KEY, String(next.syncedDay));
+      }
       localStorage.setItem(STORAGE_POMODORO_GLOBAL_KEY, JSON.stringify(next));
       if (emitEvent) {
         window.dispatchEvent(
@@ -365,18 +382,55 @@ export function completeCurrentTaskAndAdvance() {
   });
 }
 
+export function skipPomodoroSession(autoStart = false) {
+  const current = getGlobalPomodoroState();
+  playChimeSound('click');
+
+  if (current.mode === 'focus') {
+    // Determine next break: every 4 sessions is a long break (15 min), otherwise short break (5 min)
+    const isLong = (current.completedSessions + 1) % 4 === 0;
+    const nextMode: PomodoroTimerMode = isLong ? 'longBreak' : 'shortBreak';
+    const breakSeconds = isLong ? 15 * 60 : 5 * 60;
+    const now = Date.now();
+
+    setGlobalPomodoroState({
+      mode: nextMode,
+      isRunning: autoStart,
+      timeLeft: breakSeconds,
+      totalSeconds: breakSeconds,
+      endTimestamp: autoStart ? now + breakSeconds * 1000 : null,
+      syncedDay: current.syncedDay,
+      lastToastNotice: `⏭️ Đã bỏ qua tập trung ➔ Chuyển sang ${isLong ? 'Nghỉ dài (15p)' : 'Nghỉ ngắn (5p)'}`,
+    });
+  } else {
+    // If currently in break (shortBreak or longBreak), skip back to focus session!
+    const focusSeconds = 25 * 60;
+    const now = Date.now();
+
+    setGlobalPomodoroState({
+      mode: 'focus',
+      isRunning: autoStart,
+      timeLeft: focusSeconds,
+      totalSeconds: focusSeconds,
+      endTimestamp: autoStart ? now + focusSeconds * 1000 : null,
+      syncedDay: current.syncedDay,
+      lastToastNotice: '⏭️ Đã bỏ qua giờ nghỉ ➔ Bắt đầu phiên Tập trung (25p)',
+    });
+  }
+}
+
 export function syncExamToPomodoro(examName: string, examId: string) {
   const tasks = getTasksFromStorage();
-  const currentDay = new Date().getDay();
+  const current = getGlobalPomodoroState();
+  // Preserve currently selected syncedDay so we DO NOT jump to another day!
+  const targetDay = typeof current.syncedDay === 'number' ? current.syncedDay : getInitialSyncedDay();
 
-  // Find a matching uncompleted task for today or this exam
-  const todayTasks = tasks.filter((t) => t.dayOfWeek === currentDay);
+  // Find a matching uncompleted task for the currently active day first
+  const dayTasks = tasks.filter((t) => t.dayOfWeek === targetDay);
   const examMatchingTask =
-    todayTasks.find((t) => !t.completed && t.examTarget && examName.includes(t.examTarget)) ||
-    todayTasks.find((t) => !t.completed) ||
-    todayTasks[0] ||
-    tasks.find((t) => !t.completed) ||
-    tasks[0];
+    dayTasks.find((t) => !t.completed && t.examTarget && examName.includes(t.examTarget)) ||
+    dayTasks.find((t) => !t.completed) ||
+    dayTasks[0];
 
   const now = Date.now();
   const focusSeconds = 25 * 60;
@@ -386,7 +440,8 @@ export function syncExamToPomodoro(examName: string, examId: string) {
     confetti({ particleCount: 35, spread: 50, origin: { y: 0.85 } });
   } catch {}
 
-  const notice = `🍅 Đồng hồ Pomodoro đã kích hoạt cho mục tiêu "${examName}"!`;
+  const dayLabel = DAYS_OF_WEEK.find((d) => d.day === targetDay)?.label || `Thứ ${targetDay + 1}`;
+  const notice = `🍅 Đồng hồ Pomodoro đã kích hoạt cho mục tiêu "${examName}" (${dayLabel})!`;
 
   setGlobalPomodoroState({
     isRunning: true,
@@ -396,7 +451,7 @@ export function syncExamToPomodoro(examName: string, examId: string) {
     endTimestamp: now + focusSeconds * 1000,
     activeTaskId: examMatchingTask ? examMatchingTask.id : null,
     activeExamTarget: examName,
-    syncedDay: currentDay,
+    syncedDay: targetDay, // STRICTLY KEEP current day!
     isVisible: true,
     isExpanded: false, // compact pill at bottom so user can browse naturally
     lastToastNotice: notice,
@@ -490,5 +545,6 @@ export function useGlobalPomodoro() {
     toggleExpanded: toggleFloatingPomodoroExpanded,
     setSyncedDay: setPomodoroSyncedDay,
     setActiveTask: setPomodoroActiveTask,
+    skip: skipPomodoroSession,
   };
 }

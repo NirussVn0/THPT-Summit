@@ -25,6 +25,7 @@ import {
   Hourglass,
   Check,
   Zap,
+  SkipForward,
 } from 'lucide-react';
 import { StudyTask, PomodoroSettings } from '@/types/exam';
 import { DEFAULT_POMODORO_SETTINGS, POMODORO_PRESETS, playChimeSound, DAYS_OF_WEEK } from '@/lib/constants';
@@ -127,8 +128,6 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
     activeTaskId =
       dayTasksUncompleted[0]?.id ||
       dayTasks[0]?.id ||
-      tasks.find((t) => !t.completed)?.id ||
-      tasks[0]?.id ||
       '';
   }
 
@@ -636,6 +635,53 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
     });
   };
 
+  const handleSkipPomodoroSession = () => {
+    playChimeSound('click');
+    if (mode === 'focus') {
+      const isLong = (completedSessions + 1) % 4 === 0;
+      const nextMode: TimerMode = isLong ? 'longBreak' : 'shortBreak';
+      const duration = getModeDurationMinutes(nextMode);
+      setMode(nextMode);
+      setTimeLeft(duration * 60);
+      setIsRunning(false);
+      stopAmbientSound();
+      if (onRunningChange) onRunningChange(false);
+
+      setGlobalPomodoroState({
+        mode: nextMode,
+        isRunning: false,
+        timeLeft: duration * 60,
+        totalSeconds: duration * 60,
+        endTimestamp: null,
+        syncedDay: syncedDay,
+        lastToastNotice: `⏭️ Đã bỏ qua tập trung ➔ Chuyển sang ${isLong ? 'Nghỉ dài' : 'Nghỉ ngắn'} (${duration}p)`,
+      });
+
+      setFeedbackToast(`⏭️ Đã bỏ qua tập trung ➔ Chuyển sang ${isLong ? 'Nghỉ dài' : 'Nghỉ ngắn'} (${duration}p)`);
+      setTimeout(() => setFeedbackToast(''), 4500);
+    } else {
+      const duration = getModeDurationMinutes('focus');
+      setMode('focus');
+      setTimeLeft(duration * 60);
+      setIsRunning(false);
+      stopAmbientSound();
+      if (onRunningChange) onRunningChange(false);
+
+      setGlobalPomodoroState({
+        mode: 'focus',
+        isRunning: false,
+        timeLeft: duration * 60,
+        totalSeconds: duration * 60,
+        endTimestamp: null,
+        syncedDay: syncedDay,
+        lastToastNotice: `⏭️ Đã bỏ qua giờ nghỉ ➔ Bắt đầu phiên Tập trung (${duration}p)`,
+      });
+
+      setFeedbackToast(`⏭️ Đã bỏ qua giờ nghỉ ➔ Bắt đầu phiên Tập trung (${duration}p)`);
+      setTimeout(() => setFeedbackToast(''), 4500);
+    }
+  };
+
   // Stopwatch actions
   const toggleRunStopwatch = () => {
     if (!isStopwatchRunning) {
@@ -849,8 +895,18 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
                     </button>
                     <button
                       type="button"
+                      onClick={handleSkipPomodoroSession}
+                      className="h-12 px-4 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center gap-1.5 text-stone-200 text-xs font-bold transition-colors"
+                      title={mode === 'focus' ? 'Bỏ qua hiệp học ➔ Chuyển sang Nghỉ ngơi' : 'Bỏ qua giờ nghỉ ➔ Quay lại Tập trung'}
+                    >
+                      <SkipForward className="w-4 h-4 text-amber-300" />
+                      <span>{mode === 'focus' ? 'Skip qua nghỉ' : 'Skip qua học'}</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={handleResetPomodoro}
                       className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-stone-300 transition-colors"
+                      title="Đặt lại hiệp"
                     >
                       <RotateCcw className="w-5 h-5" />
                     </button>
@@ -1070,7 +1126,13 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
                     try {
                       localStorage.setItem(STORAGE_ACTIVE_TASK_KEY, firstUnfinished.id);
                     } catch {}
+                  } else {
+                    setManualTaskId('');
                   }
+                  setGlobalPomodoroState({
+                    syncedDay: newDay,
+                    activeTaskId: firstUnfinished ? firstUnfinished.id : null,
+                  });
                   playChimeSound('start');
                   setFeedbackToast(
                     `🍅 Đã đồng bộ toàn bộ ${newDayTasks.length} ca học của ${d.label}! Xong bài 1 tự done & tự chuyển qua bài 2.`
@@ -1337,6 +1399,16 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
                 <span>Xong ca & Qua bài tiếp</span>
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={handleSkipPomodoroSession}
+              className="px-4 py-3 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs hover:scale-102 active:scale-98"
+              title={mode === 'focus' ? 'Bỏ qua hiệp học ➔ Chuyển sang Nghỉ ngơi' : 'Bỏ qua giờ nghỉ ➔ Quay lại Tập trung'}
+            >
+              <SkipForward className="w-4 h-4 text-amber-700" />
+              <span>{mode === 'focus' ? 'Skip qua nghỉ' : 'Skip qua học'}</span>
+            </button>
 
             <button
               type="button"

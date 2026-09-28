@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { StudyTask, SubjectTag, UserProfile, SubTaskItem } from '@/types/exam';
 import { STUDY_TEMPLATES, playChimeSound, DAYS_OF_WEEK } from '@/lib/constants';
+import { setGlobalPomodoroState } from '@/lib/pomodoroState';
 import confetti from 'canvas-confetti';
 
 interface SmartStudyPlannerProps {
@@ -117,6 +118,10 @@ export const SmartStudyPlanner: React.FC<SmartStudyPlannerProps> = ({
     try {
       localStorage.setItem('si_tu_2027_active_task_id_v1', task.id);
       localStorage.setItem('si_tu_2027_synced_day_v1', String(task.dayOfWeek));
+      setGlobalPomodoroState({
+        syncedDay: task.dayOfWeek,
+        activeTaskId: task.id,
+      });
       window.dispatchEvent(
         new CustomEvent('si_tu_2027_sync_timer_task', {
           detail: { taskId: task.id },
@@ -151,6 +156,10 @@ export const SmartStudyPlanner: React.FC<SmartStudyPlannerProps> = ({
       if (firstUnfinished) {
         localStorage.setItem('si_tu_2027_active_task_id_v1', firstUnfinished.id);
       }
+      setGlobalPomodoroState({
+        syncedDay: day,
+        activeTaskId: firstUnfinished ? firstUnfinished.id : null,
+      });
 
       window.dispatchEvent(
         new CustomEvent('si_tu_2027_sync_day_queue', {

@@ -18,6 +18,7 @@ import {
   BookOpen,
   Calendar,
   Layers,
+  SkipForward,
 } from 'lucide-react';
 import { useGlobalPomodoro, PomodoroTimerMode } from '@/lib/pomodoroState';
 import { StudyTask } from '@/types/exam';
@@ -41,6 +42,7 @@ export const FloatingPomodoroPopup: React.FC = () => {
     toggleExpanded,
     toggleVisible,
     setSyncedDay,
+    skip,
   } = useGlobalPomodoro();
 
   const [tasks, setTasks] = useState<StudyTask[]>(() => {
@@ -243,6 +245,28 @@ export const FloatingPomodoroPopup: React.FC = () => {
                 </button>
               </div>
 
+              {/* Day Selector Strip in Popup */}
+              <div className="flex items-center gap-1 overflow-x-auto p-1 bg-stone-100/90 rounded-2xl no-scrollbar">
+                {DAYS_OF_WEEK.map((d) => {
+                  const isSelected = state.syncedDay === d.day;
+                  return (
+                    <button
+                      key={d.day}
+                      type="button"
+                      onClick={() => setSyncedDay(d.day)}
+                      className={`flex-1 py-1 px-1 rounded-xl text-[11px] font-bold transition-all text-center shrink-0 ${
+                        isSelected
+                          ? 'bg-purple-600 text-white shadow-2xs'
+                          : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
+                      }`}
+                      title={`Đồng bộ bài học ${d.label}`}
+                    >
+                      {d.label === 'Chủ Nhật' ? 'CN' : d.label.replace('Thứ ', 'T')}
+                    </button>
+                  );
+                })}
+              </div>
+
               {/* Big Clock Display with Progress Bar */}
               <div className="flex flex-col items-center justify-center py-2">
                 <div className="text-5xl font-mono font-black tracking-tight text-stone-900 select-none flex items-center gap-1">
@@ -344,6 +368,16 @@ export const FloatingPomodoroPopup: React.FC = () => {
 
                 <button
                   type="button"
+                  onClick={() => skip(false)}
+                  className="flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold transition-all hover:scale-102 active:scale-98"
+                  title={state.mode === 'focus' ? 'Bỏ qua hiệp học ➔ Chuyển sang Nghỉ ngơi' : 'Bỏ qua giờ nghỉ ➔ Quay lại Tập trung'}
+                >
+                  <SkipForward className="w-4 h-4 text-amber-700" />
+                  <span>{state.mode === 'focus' ? 'Skip: Nghỉ' : 'Skip: Học'}</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={reset}
                   className="p-2.5 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors"
                   title="Đặt lại phiên"
@@ -411,6 +445,17 @@ export const FloatingPomodoroPopup: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Quick Skip button on Dock Pill */}
+        <button
+          type="button"
+          onClick={() => skip(false)}
+          className="inline-flex items-center gap-1 py-1.5 px-2.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 text-[11px] font-bold transition-all hover:scale-105 active:scale-95 shrink-0"
+          title={state.mode === 'focus' ? 'Skip: Chuyển qua Nghỉ ngơi' : 'Skip: Quay lại Tập trung'}
+        >
+          <SkipForward className="w-3.5 h-3.5 text-amber-700" />
+          <span className="hidden sm:inline">{state.mode === 'focus' ? 'Nghỉ' : 'Học'}</span>
+        </button>
 
         {/* Quick "Xong bài" button right on the pill */}
         {activeTask && (
