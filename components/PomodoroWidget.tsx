@@ -27,7 +27,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { StudyTask, PomodoroSettings } from '@/types/exam';
-import { DEFAULT_POMODORO_SETTINGS, POMODORO_PRESETS, playChimeSound } from '@/lib/constants';
+import { DEFAULT_POMODORO_SETTINGS, POMODORO_PRESETS, playChimeSound, DAYS_OF_WEEK } from '@/lib/constants';
 import confetti from 'canvas-confetti';
 
 interface PomodoroWidgetProps {
@@ -84,9 +84,17 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
   const [customCountdownLeft, setCustomCountdownLeft] = useState<number>(60 * 60);
   const [isCustomCountdownRunning, setIsCustomCountdownRunning] = useState<boolean>(false);
 
-  // Synced Task state
+  // Synced Day & Task state (Auto-Sync Queue: Xong bài nào tự done và tự nhảy qua bài tiếp theo)
   const currentDayOfWeek = new Date().getDay();
-  const todayTasks = tasks.filter((t) => t.dayOfWeek === currentDayOfWeek);
+  const [syncedDay, setSyncedDay] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('si_tu_2027_synced_day_v1');
+        if (saved !== null) return parseInt(saved, 10);
+      } catch {}
+    }
+    return currentDayOfWeek;
+  });
 
   const [manualTaskId, setManualTaskId] = useState<string>(() => {
     if (typeof window !== 'undefined') {
@@ -97,14 +105,62 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
     return '';
   });
 
-  const selectedTaskId = manualTaskId && tasks.some((t) => t.id === manualTaskId)
-    ? manualTaskId
-    : todayTasks.find((t) => !t.completed)?.id || todayTasks[0]?.id || tasks[0]?.id || '';
+  const dayTasks = tasks.filter((t) => t.dayOfWeek === syncedDay);
+  const dayTasksCompleted = dayTasks.filter((t) => t.completed);
+  const dayTasksUncompleted = dayTasks.filter((t) => !t.completed);
 
-  const activeTask = tasks.find((t) => t.id === selectedTaskId);
+  // Determine active task ID:
+  // 1. If manualTaskId belongs to dayTasks and is NOT completed, prioritize it!
+  // 2. Otherwise pick the first uncompleted task in dayTasks
+  // 3. If all completed in dayTasks, pick the first or last task in dayTasks
+  // 4. Fallback to any uncompleted task in all tasks
+  let activeTaskId = '';
+  if (manualTaskId && dayTasks.some((t) => t.id === manualTaskId)) {
+    const manualTask = dayTasks.find((t) => t.id === manualTaskId);
+    if (manualTask && !manualTask.completed) {
+      activeTaskId = manualTask.id;
+    } else {
+      activeTaskId = dayTasksUncompleted[0]?.id || dayTasks[0]?.id || '';
+    }
+  } else {
+    activeTaskId =
+      dayTasksUncompleted[0]?.id ||
+      dayTasks[0]?.id ||
+      tasks.find((t) => !t.completed)?.id ||
+      tasks[0]?.id ||
+      '';
+  }
 
-  // Toast feedback message inside widget
-  const [feedbackToast, setFeedbackToast] = useState('');
+  const selectedTaskId = activeTaskId;
+  const activeTask = tasks.find((t) => t.id === activeTaskId);
+
+  // Toast feedback message inside widget with lazy initialization
+  const [feedbackToast, setFeedbackToast] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const notice = localStorage.getItem('si_tu_2027_pomodoro_sync_notice');
+        if (notice) {
+          localStorage.removeItem('si_tu_2027_pomodoro_sync_notice');
+          return notice;
+        }
+        const params = new URLSearchParams(window.location.search);
+        const examName = params.get('examName');
+        const examTarget = params.get('examTarget');
+        if (examName || examTarget) {
+          return `🍅 Đã kết nối mục tiêu ${examName || examTarget} vào Trạm Pomodoro & Auto-Sync chuỗi ca học hôm nay!`;
+        }
+      } catch {}
+    }
+    return '';
+  });
+
+  // Auto-dismiss toast
+  useEffect(() => {
+    if (feedbackToast) {
+      const timer = setTimeout(() => setFeedbackToast(''), 5500);
+      return () => clearTimeout(timer);
+    }
+  }, [feedbackToast]);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const stopwatchRef = useRef<NodeJS.Timeout | null>(null);
@@ -112,22 +168,46 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
   const ambientAudioRef = useRef<AudioContext | null>(null);
   const ambientNodeRef = useRef<{ stop: () => void } | null>(null);
 
-  // Listen for task sync events dispatched on double-click
+  // Listen for day sync queue and task sync events
   useEffect(() => {
-    const handleSyncEvent = (e: Event) => {
+    const handleDaySync = (e: Event) => {
+      const customEvt = e as CustomEvent<{ dayOfWeek: number; dayLabel?: string; firstTaskId?: string }>;
+      if (typeof customEvt.detail?.dayOfWeek === 'number') {
+        const newDay = customEvt.detail.dayOfWeek;
+        setSyncedDay(newDay);
+        if (customEvt.detail.firstTaskId) {
+          setManualTaskId(customEvt.detail.firstTaskId);
+        } else {
+          const dTasks = tasks.filter((t) => t.dayOfWeek === newDay);
+          const uncompleted = dTasks.find((t) => !t.completed);
+          if (uncompleted) setManualTaskId(uncompleted.id);
+        }
+        setFeedbackToast(
+          `🍅 Đã kết nối chuỗi bài học ${customEvt.detail.dayLabel || ''}! Xong từng bài sẽ tự hoàn thành & nhảy bài tiếp.`
+        );
+        setTimeout(() => setFeedbackToast(''), 4500);
+      }
+    };
+
+    const handleTaskSync = (e: Event) => {
       const customEvt = e as CustomEvent<{ taskId: string }>;
       if (customEvt.detail?.taskId) {
         setManualTaskId(customEvt.detail.taskId);
         const taskObj = tasks.find((t) => t.id === customEvt.detail.taskId);
         if (taskObj) {
+          setSyncedDay(taskObj.dayOfWeek);
           setFeedbackToast(`🍅 Đã kết nối với bài học: "${taskObj.title}"`);
           setTimeout(() => setFeedbackToast(''), 4000);
         }
       }
     };
 
-    window.addEventListener('si_tu_2027_sync_timer_task', handleSyncEvent);
-    return () => window.removeEventListener('si_tu_2027_sync_timer_task', handleSyncEvent);
+    window.addEventListener('si_tu_2027_sync_day_queue', handleDaySync);
+    window.addEventListener('si_tu_2027_sync_timer_task', handleTaskSync);
+    return () => {
+      window.removeEventListener('si_tu_2027_sync_day_queue', handleDaySync);
+      window.removeEventListener('si_tu_2027_sync_timer_task', handleTaskSync);
+    };
   }, [tasks]);
 
   // Calculate current duration for the active mode
@@ -229,6 +309,62 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
     } catch {}
   }, [stopAmbientSound]);
 
+  // Complete active task and automatically advance to next task in the day queue
+  const handleCompleteAndAdvanceToNextTask = (targetTaskId?: string, minutesToLog?: number) => {
+    const currentId = targetTaskId || selectedTaskId;
+    if (!currentId || !onUpdateTasks) return;
+
+    const currentTask = tasks.find((t) => t.id === currentId);
+    if (!currentTask) return;
+
+    const logged =
+      (currentTask.loggedFocusMinutes || 0) +
+      (minutesToLog || currentTask.durationMinutes || settings.focusMinutes);
+    const updatedTasks = tasks.map((t) =>
+      t.id === currentId ? { ...t, completed: true, loggedFocusMinutes: logged } : t
+    );
+    onUpdateTasks(updatedTasks);
+    playChimeSound('complete');
+
+    // Find next uncompleted task in the synced day's queue
+    const remainingDayTasks = updatedTasks.filter(
+      (t) => t.dayOfWeek === syncedDay && !t.completed && t.id !== currentId
+    );
+
+    if (remainingDayTasks.length > 0) {
+      const nextTask = remainingDayTasks[0];
+      setManualTaskId(nextTask.id);
+      try {
+        localStorage.setItem(STORAGE_ACTIVE_TASK_KEY, nextTask.id);
+      } catch {}
+
+      if (mode === 'focus') {
+        setTimeLeft(settings.focusMinutes * 60);
+      }
+
+      try {
+        confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+      } catch {}
+
+      setFeedbackToast(
+        `✓ Đã hoàn thành "${currentTask.title}"! 🚀 Tự động chuyển qua bài tiếp theo: "${nextTask.title}"`
+      );
+      setTimeout(() => setFeedbackToast(''), 5500);
+    } else {
+      try {
+        confetti({ particleCount: 100, spread: 80, origin: { y: 0.5 } });
+      } catch {}
+      const dayLabel = DAYS_OF_WEEK.find((d) => d.day === syncedDay)?.label || `Thứ ${syncedDay + 1}`;
+      setFeedbackToast(`🎉 Tuyệt vời! Bạn đã hoàn thành toàn bộ nhiệm vụ của ${dayLabel}!`);
+      setTimeout(() => setFeedbackToast(''), 6000);
+    }
+  };
+
+  const handleCompleteRef = useRef(handleCompleteAndAdvanceToNextTask);
+  useEffect(() => {
+    handleCompleteRef.current = handleCompleteAndAdvanceToNextTask;
+  });
+
   // Pomodoro timer loop
   useEffect(() => {
     if (isRunning && operationalType === 'pomodoro') {
@@ -252,21 +388,9 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
 
               if (onSessionCompleted) onSessionCompleted(minutesSpent);
 
-              // Auto-sync with study schedule task
+              // Auto-sync with study schedule task: Complete current task and auto-advance to next task!
               if (settings.syncWithSchedule && selectedTaskId && onUpdateTasks) {
-                const currentTask = tasks.find((t) => t.id === selectedTaskId);
-                if (currentTask) {
-                  const updatedLoggedMinutes = (currentTask.loggedFocusMinutes || 0) + minutesSpent;
-                  const isNowCompleted = updatedLoggedMinutes >= currentTask.durationMinutes || currentTask.completed;
-
-                  onUpdateTasks(
-                    tasks.map((t) =>
-                      t.id === selectedTaskId
-                        ? { ...t, loggedFocusMinutes: updatedLoggedMinutes, completed: isNowCompleted }
-                        : t
-                    )
-                  );
-                }
+                handleCompleteRef.current(selectedTaskId, minutesSpent);
               }
 
               try {
@@ -549,13 +673,7 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
 
   // Quick mark active task completed in schedule
   const handleQuickMarkTaskComplete = () => {
-    if (!selectedTaskId || !onUpdateTasks) return;
-    const updated = tasks.map((t) => (t.id === selectedTaskId ? { ...t, completed: true } : t));
-    onUpdateTasks(updated);
-    playChimeSound('complete');
-    try {
-      confetti({ particleCount: 40, spread: 50, origin: { y: 0.7 } });
-    } catch {}
+    handleCompleteAndAdvanceToNextTask(selectedTaskId);
   };
 
   // Formatted times
@@ -859,60 +977,196 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
         </div>
       </div>
 
-      {/* Synced Task Indicator Pill */}
-      {activeTask && (
-        <div className="mb-4 p-3 rounded-2xl bg-purple-50/70 border border-purple-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-base shrink-0">🎯</span>
-            <div className="min-w-0">
-              <div className="text-xs font-bold text-purple-950 flex items-center gap-1.5 truncate">
-                <span>Đang kết nối:</span>
-                <span className="text-purple-800 font-extrabold truncate">{activeTask.title}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200 shrink-0">
-                  {activeTask.subject} • {activeTask.durationMinutes}p
+      {/* Synced Day Multi-Task Queue Header & Stepper */}
+      <div className="mb-5 p-4 rounded-3xl bg-gradient-to-r from-purple-50/90 via-rose-50/60 to-amber-50/70 border border-purple-200/80 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-sm shadow-2xs shrink-0">
+              📅
+            </div>
+            <div>
+              <div className="text-xs md:text-sm font-bold text-purple-950 flex items-center gap-2 flex-wrap">
+                <span>Chuỗi Học Đồng Bộ: {DAYS_OF_WEEK.find((d) => d.day === syncedDay)?.label || 'Hôm nay'}</span>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                  {dayTasksCompleted.length}/{dayTasks.length} bài xong
+                </span>
+                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                  <Zap className="w-2.5 h-2.5" /> Auto-Sync Tự Chuyển Bài
                 </span>
               </div>
-              {activeTask.subtasks && activeTask.subtasks.length > 0 && (
-                <div className="text-[11px] text-purple-700 mt-0.5">
-                  Việc nhỏ: {activeTask.subtasks.filter((s) => s.completed).length}/{activeTask.subtasks.length} đã xong
-                </div>
-              )}
+              <p className="text-[11px] text-purple-800/80 mt-0.5">
+                Ấn vào ngày để kết nối toàn bộ ca học: Xong bài nào sẽ tự đánh dấu hoàn thành & tự động nhảy sang bài tiếp theo.
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-            {/* Task selector dropdown */}
-            <select
-              value={selectedTaskId}
-              onChange={(e) => {
-                setManualTaskId(e.target.value);
-                try {
-                  localStorage.setItem(STORAGE_ACTIVE_TASK_KEY, e.target.value);
-                } catch {}
-              }}
-              className="text-xs bg-white border border-purple-200 text-purple-900 rounded-xl px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-purple-400"
-            >
-              {tasks.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.completed ? '✓ ' : ''}{t.subject}: {t.title.slice(0, 28)}...
-                </option>
-              ))}
-            </select>
-
-            {!activeTask.completed && (
-              <button
-                type="button"
-                onClick={handleQuickMarkTaskComplete}
-                className="px-2.5 py-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold shadow-2xs flex items-center gap-1"
-                title="Đánh dấu ca học này đã hoàn thành"
-              >
-                <Check className="w-3.5 h-3.5" />
-                <span>Xong ca</span>
-              </button>
-            )}
+          <div className="text-xs text-stone-500 font-medium self-end sm:self-auto flex items-center gap-1.5">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Chế độ Auto-Advance Bật</span>
           </div>
         </div>
-      )}
+
+        {/* Quick Day Selector Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto p-1 bg-white/80 rounded-2xl border border-purple-200/60 mb-3.5 no-scrollbar">
+          {DAYS_OF_WEEK.map((d) => {
+            const isSelected = syncedDay === d.day;
+            const isToday = currentDayOfWeek === d.day;
+            const countForDay = tasks.filter((t) => t.dayOfWeek === d.day).length;
+            const completedCountForDay = tasks.filter((t) => t.dayOfWeek === d.day && t.completed).length;
+
+            return (
+              <button
+                key={d.day}
+                type="button"
+                onClick={() => {
+                  const newDay = d.day;
+                  setSyncedDay(newDay);
+                  try {
+                    localStorage.setItem('si_tu_2027_synced_day_v1', String(newDay));
+                  } catch {}
+                  const newDayTasks = tasks.filter((t) => t.dayOfWeek === newDay);
+                  const firstUnfinished = newDayTasks.find((t) => !t.completed) || newDayTasks[0];
+                  if (firstUnfinished) {
+                    setManualTaskId(firstUnfinished.id);
+                    try {
+                      localStorage.setItem(STORAGE_ACTIVE_TASK_KEY, firstUnfinished.id);
+                    } catch {}
+                  }
+                  playChimeSound('start');
+                  setFeedbackToast(
+                    `🍅 Đã đồng bộ toàn bộ ${newDayTasks.length} ca học của ${d.label}! Xong bài 1 tự done & tự chuyển qua bài 2.`
+                  );
+                  setTimeout(() => setFeedbackToast(''), 4500);
+                }}
+                className={`relative px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 flex items-center gap-1.5 border ${
+                  isSelected
+                    ? 'bg-purple-600 text-white font-bold shadow-2xs border-purple-600'
+                    : isToday
+                    ? 'bg-purple-50 text-purple-900 border-purple-200 hover:bg-purple-100'
+                    : 'bg-white text-stone-600 hover:text-stone-900 border-stone-200/60 hover:bg-stone-50'
+                }`}
+                title={`Nhấn để kết nối và tự động chuyển bài cho toàn bộ ca học của ${d.label}`}
+              >
+                <span>{d.label}</span>
+                {isToday && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" title="Hôm nay" />
+                )}
+                {countForDay > 0 && (
+                  <span
+                    className={`text-[10px] px-1 rounded-full ${
+                      isSelected
+                        ? 'bg-purple-500 text-white font-bold'
+                        : completedCountForDay === countForDay
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-stone-100 text-stone-600'
+                    }`}
+                  >
+                    {completedCountForDay}/{countForDay}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Visual Queue Cards */}
+        {dayTasks.length > 0 ? (
+          <div className="space-y-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+              {dayTasks.map((t, idx) => {
+                const isActive = t.id === activeTaskId;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      setManualTaskId(t.id);
+                      try {
+                        localStorage.setItem(STORAGE_ACTIVE_TASK_KEY, t.id);
+                      } catch {}
+                    }}
+                    className={`p-2.5 rounded-2xl text-left transition-all border flex items-start gap-2 ${
+                      isActive
+                        ? 'bg-white text-purple-950 border-purple-500 shadow-xs ring-2 ring-purple-400/40'
+                        : t.completed
+                        ? 'bg-emerald-50/70 text-stone-500 border-emerald-200 opacity-80'
+                        : 'bg-white/70 text-stone-700 border-stone-200/80 hover:bg-white hover:border-purple-200'
+                    }`}
+                  >
+                    <div className="mt-0.5 shrink-0">
+                      {t.completed ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 fill-emerald-100" />
+                      ) : isActive ? (
+                        <span className="relative flex h-3.5 w-3.5 mt-0.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-purple-600"></span>
+                        </span>
+                      ) : (
+                        <span className="w-4 h-4 rounded-full border border-stone-300 flex items-center justify-center text-[10px] font-bold text-stone-400">
+                          {idx + 1}
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${
+                            isActive
+                              ? 'bg-purple-100 text-purple-800'
+                              : 'bg-stone-100 text-stone-600'
+                          }`}
+                        >
+                          {t.subject}
+                        </span>
+                        <span className="text-[10px] text-stone-400 font-mono">{t.durationMinutes}p</span>
+                      </div>
+                      <div
+                        className={`text-xs font-bold truncate mt-1 ${
+                          isActive
+                            ? 'text-purple-950 font-extrabold'
+                            : t.completed
+                            ? 'line-through text-stone-400'
+                            : 'text-stone-800'
+                        }`}
+                      >
+                        {t.title}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Active task quick controls */}
+            {activeTask && (
+              <div className="mt-2.5 pt-2.5 border-t border-purple-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="text-xs text-purple-900 font-medium truncate">
+                  <strong>
+                    Đang tập trung bài {dayTasks.findIndex((t) => t.id === activeTaskId) + 1}/{dayTasks.length}:
+                  </strong>{' '}
+                  <span className="font-bold">{activeTask.title}</span> ({activeTask.subject} • {activeTask.durationMinutes}p)
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => handleCompleteAndAdvanceToNextTask(activeTask.id)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold shadow-2xs transition-all hover:scale-102 active:scale-98"
+                    title="Đánh dấu hoàn thành bài này và tự động nhảy sang bài tiếp theo"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Xong bài này & Sang bài tiếp →</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-4 rounded-2xl bg-white/70 border border-stone-200 text-center text-xs text-stone-500">
+            Ngày này chưa có bài học nào trong Lịch học. Hãy chuyển sang tab <strong>Lịch Học 2K9</strong> để thêm bài học.
+          </div>
+        )}
+      </div>
 
       {/* ========================================================
           PANEL 1: POMODORO MODE (25/50/90p)
@@ -961,6 +1215,45 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
             </button>
           </div>
 
+          {/* Active Task in Focus */}
+          {activeTask ? (
+            <div className="p-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-50 via-rose-50/70 to-amber-50/70 border border-purple-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+                  🎯
+                </span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-[11px] flex-wrap">
+                    <span className="font-extrabold text-purple-900">
+                      Ca {dayTasks.findIndex((t) => t.id === activeTaskId) + 1}/{dayTasks.length} ({DAYS_OF_WEEK.find((d) => d.day === syncedDay)?.label || 'Hôm nay'}):
+                    </span>
+                    <span className="font-bold px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-800 border border-purple-200">
+                      {activeTask.subject}
+                    </span>
+                    <span className="text-stone-500 font-medium">({activeTask.durationMinutes}p)</span>
+                  </div>
+                  <div className="text-xs sm:text-sm font-extrabold text-stone-900 truncate mt-0.5">
+                    {activeTask.title}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleCompleteAndAdvanceToNextTask(activeTask.id)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-2xs transition-all hover:scale-102 active:scale-98 shrink-0 self-end sm:self-auto"
+                title="Đánh dấu hoàn thành ca học này và tự động chuyển sang ca tiếp theo"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Xong bài này ➔ Qua bài tiếp</span>
+              </button>
+            </div>
+          ) : (
+            <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200/80 text-center text-xs text-stone-500">
+              Chưa có bài học nào được lên lịch cho {DAYS_OF_WEEK.find((d) => d.day === syncedDay)?.label}. Bạn có thể chọn ngày khác ở trên hoặc chuyển sang tab Lịch Học 2K9.
+            </div>
+          )}
+
           {/* Big Time Display */}
           <div className="flex flex-col items-center justify-center py-4">
             <div className="text-6xl sm:text-7xl md:text-8xl font-black font-mono tracking-tighter text-stone-900 tabular-nums select-none">
@@ -980,7 +1273,7 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
           </div>
 
           {/* Pomodoro Action Buttons */}
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
               onClick={toggleRunPomodoro}
@@ -993,6 +1286,18 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
               {isRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-current" />}
               <span>{isRunning ? 'Tạm dừng hiệp' : 'Bắt đầu học'}</span>
             </button>
+
+            {activeTask && (
+              <button
+                type="button"
+                onClick={() => handleCompleteAndAdvanceToNextTask(activeTask.id)}
+                className="px-4 py-3 rounded-2xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs hover:scale-102 active:scale-98"
+                title="Đánh dấu hoàn thành bài học này và tự động chuyển sang bài tiếp theo"
+              >
+                <Check className="w-4 h-4 text-purple-700" />
+                <span>Xong ca & Qua bài tiếp</span>
+              </button>
+            )}
 
             <button
               type="button"

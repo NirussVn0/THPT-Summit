@@ -26,7 +26,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { StudyTask, SubjectTag, UserProfile, SubTaskItem } from '@/types/exam';
-import { STUDY_TEMPLATES, playChimeSound } from '@/lib/constants';
+import { STUDY_TEMPLATES, playChimeSound, DAYS_OF_WEEK } from '@/lib/constants';
 import confetti from 'canvas-confetti';
 
 interface SmartStudyPlannerProps {
@@ -35,16 +35,6 @@ interface SmartStudyPlannerProps {
   onUpdateTasks: (tasks: StudyTask[]) => void;
   onTaskCompleted?: () => void;
 }
-
-const DAYS_OF_WEEK = [
-  { day: 1, label: 'Thứ 2', short: 'T2' },
-  { day: 2, label: 'Thứ 3', short: 'T3' },
-  { day: 3, label: 'Thứ 4', short: 'T4' },
-  { day: 4, label: 'Thứ 5', short: 'T5' },
-  { day: 5, label: 'Thứ 6', short: 'T6' },
-  { day: 6, label: 'Thứ 7', short: 'T7' },
-  { day: 0, label: 'Chủ Nhật', short: 'CN' },
-];
 
 const SUBJECT_COLORS: { [key: string]: { bg: string; text: string; border: string } } = {
   Toán: { bg: 'bg-sky-100/80', text: 'text-sky-800', border: 'border-sky-200' },
@@ -126,22 +116,62 @@ export const SmartStudyPlanner: React.FC<SmartStudyPlannerProps> = ({
   const handleSyncTaskWithTimer = (task: StudyTask) => {
     try {
       localStorage.setItem('si_tu_2027_active_task_id_v1', task.id);
+      localStorage.setItem('si_tu_2027_synced_day_v1', String(task.dayOfWeek));
       window.dispatchEvent(
         new CustomEvent('si_tu_2027_sync_timer_task', {
           detail: { taskId: task.id },
         })
       );
+      window.dispatchEvent(
+        new CustomEvent('si_tu_2027_switch_phong_hoc_tab', {
+          detail: { tab: 'pomodoro' },
+        })
+      );
     } catch {}
 
     playChimeSound('start');
-    setToastMessage(`🍅 Đã kết nối với ca học: "${task.title}". Sẵn sàng bấm giờ!`);
+    setToastMessage(`🍅 Đã kết nối với ca học: "${task.title}". Tự động chuyển sang Trạm Pomodoro!`);
     setTimeout(() => setToastMessage(''), 4500);
 
     // If pomodoro widget is on the page, smoothly scroll to it
-    const pomodoroEl = document.getElementById('pomodoro-station') || document.getElementById('pomodoro-card');
+    const pomodoroEl = document.getElementById('pomodoro-station') || document.getElementById('pomodoro-focus-widget');
     if (pomodoroEl) {
       pomodoroEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
+  };
+
+  // Sync Entire Day's Tasks with Pomodoro Queue (Auto-Sync: Xong task đầu tự done rồi tự qua task tiếp)
+  const handleSyncDayWithPomodoro = (day: number, dayLabel?: string) => {
+    const dayName = dayLabel || DAYS_OF_WEEK.find((d) => d.day === day)?.label || `Thứ ${day + 1}`;
+    const dayTasks = tasks.filter((t) => t.dayOfWeek === day);
+
+    try {
+      localStorage.setItem('si_tu_2027_synced_day_v1', String(day));
+      const firstUnfinished = dayTasks.find((t) => !t.completed) || dayTasks[0];
+      if (firstUnfinished) {
+        localStorage.setItem('si_tu_2027_active_task_id_v1', firstUnfinished.id);
+      }
+
+      window.dispatchEvent(
+        new CustomEvent('si_tu_2027_sync_day_queue', {
+          detail: {
+            dayOfWeek: day,
+            dayLabel: dayName,
+            firstTaskId: firstUnfinished?.id,
+          },
+        })
+      );
+    } catch {}
+
+    playChimeSound('start');
+    if (dayTasks.length > 0) {
+      setToastMessage(
+        `🍅 Đã tự động kết nối ${dayTasks.length} bài học của ${dayName} vào Pomodoro! Xong bài 1 tự done & tự chuyển qua bài tiếp theo.`
+      );
+    } else {
+      setToastMessage(`📅 Đã chọn ${dayName}. Hãy thêm bài học để tự động kết nối Pomodoro!`);
+    }
+    setTimeout(() => setToastMessage(''), 4500);
   };
 
   const handleToggleTask = (id: string) => {
@@ -553,6 +583,7 @@ export const SmartStudyPlanner: React.FC<SmartStudyPlannerProps> = ({
                   onClick={() => {
                     setIsAllDays(false);
                     setSelectedDay(d.day);
+                    handleSyncDayWithPomodoro(d.day, d.label);
                   }}
                   className={`relative px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 border ${
                     isSelected
@@ -561,6 +592,7 @@ export const SmartStudyPlanner: React.FC<SmartStudyPlannerProps> = ({
                       ? 'bg-purple-50 text-purple-800 border-purple-200'
                       : 'bg-stone-50 text-stone-600 hover:bg-stone-100 border-transparent'
                   }`}
+                  title={`Nhấn để xem và tự động kết nối chuỗi bài học ${d.label} vào Pomodoro`}
                 >
                   <span>{d.label}</span>
                   {isToday && (
@@ -602,27 +634,63 @@ export const SmartStudyPlanner: React.FC<SmartStudyPlannerProps> = ({
           </div>
         </div>
 
-        {/* Daily Completion Header */}
+        {/* Daily Completion Header & Pomodoro Auto-Sync Bar */}
         {!isAllDays && totalTodayCount > 0 && (
-          <div className="flex items-center justify-between py-3 px-3.5 my-3 rounded-2xl bg-stone-50 border border-stone-100">
-            <div className="flex items-center gap-2">
-              <div className="text-xs font-semibold text-stone-700">
-                Tiến độ {DAYS_OF_WEEK.find((d) => d.day === selectedDay)?.label}:
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 py-3 px-4 my-3 rounded-2xl bg-gradient-to-r from-purple-50/90 via-rose-50/70 to-amber-50/70 border border-purple-200/80 shadow-2xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
+                🍅
               </div>
-              <span className="text-xs font-bold text-stone-900">
-                {completedTodayCount}/{totalTodayCount} nhiệm vụ
-              </span>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-stone-900">
+                    Tiến độ {DAYS_OF_WEEK.find((d) => d.day === selectedDay)?.label}:
+                  </span>
+                  <span className="text-xs font-extrabold text-purple-800">
+                    {completedTodayCount}/{totalTodayCount} nhiệm vụ
+                  </span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                    <Zap className="w-2.5 h-2.5" /> Auto-Sync: Xong tự qua bài tiếp
+                  </span>
+                </div>
+                <div className="text-[11px] text-stone-500 mt-0.5">
+                  Đã kết nối {totalTodayCount} bài vào Pomodoro. Khi học xong mỗi ca, hệ thống tự động đánh dấu hoàn thành và nhảy sang bài tiếp theo.
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-28 md:w-36 h-2 rounded-full bg-stone-200 overflow-hidden">
+
+            <div className="flex items-center gap-3 shrink-0 self-end md:self-auto">
+              <div className="w-24 md:w-32 h-2 rounded-full bg-stone-200 overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-300"
                   style={{ width: `${completionPercent}%` }}
                 />
               </div>
-              <span className="text-xs font-semibold text-emerald-700 min-w-[32px] text-right">
+              <span className="text-xs font-bold text-emerald-700 min-w-[32px] text-right font-mono">
                 {completionPercent}%
               </span>
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleSyncDayWithPomodoro(selectedDay);
+                  window.dispatchEvent(
+                    new CustomEvent('si_tu_2027_switch_phong_hoc_tab', { detail: { tab: 'pomodoro' } })
+                  );
+                  const pomodoroTabBtn = document.querySelector('[data-tab="pomodoro"]') as HTMLButtonElement | null;
+                  if (pomodoroTabBtn) {
+                    pomodoroTabBtn.click();
+                  } else {
+                    window.location.href = '/phong-hoc?tab=pomodoro';
+                  }
+                  window.scrollTo({ top: 100, behavior: 'smooth' });
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-2xs transition-all hover:scale-102 active:scale-98"
+                title="Mở Trạm Pomodoro với chuỗi bài học ngày này"
+              >
+                <span>Học Pomodoro (Auto-Advance)</span>
+                <Timer className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         )}

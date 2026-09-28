@@ -52,6 +52,22 @@ export default function PhongHocPage() {
   });
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
+  // Listen for programmatic tab switch events from other components
+  React.useEffect(() => {
+    const handleSwitchTab = (e: Event) => {
+      const customEvt = e as CustomEvent<{ tab: 'pomodoro' | 'planner' | 'reminders' | 'news' | 'all' }>;
+      if (customEvt.detail?.tab) {
+        setActiveTab(customEvt.detail.tab);
+        window.scrollTo({ top: 100, behavior: 'smooth' });
+      }
+    };
+
+    window.addEventListener('si_tu_2027_switch_phong_hoc_tab', handleSwitchTab);
+    return () => {
+      window.removeEventListener('si_tu_2027_switch_phong_hoc_tab', handleSwitchTab);
+    };
+  }, []);
+
   // Today's tasks count
   const currentDayOfWeek = new Date().getDay();
   const todayTasks = tasks.filter((t) => t.dayOfWeek === currentDayOfWeek);
@@ -131,6 +147,8 @@ export default function PhongHocPage() {
           <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-2xl w-full sm:w-auto overflow-x-auto">
             <button
               type="button"
+              data-tab="pomodoro"
+              id="tab-pomodoro-btn"
               onClick={() => setActiveTab('pomodoro')}
               className={`flex items-center justify-center gap-2 py-2 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all shrink-0 border ${
                 activeTab === 'pomodoro'
@@ -144,6 +162,8 @@ export default function PhongHocPage() {
 
             <button
               type="button"
+              data-tab="planner"
+              id="tab-planner-btn"
               onClick={() => setActiveTab('planner')}
               className={`flex items-center justify-center gap-2 py-2 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all shrink-0 border ${
                 activeTab === 'planner'

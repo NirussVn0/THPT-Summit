@@ -423,21 +423,30 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* Floating Quick Action: Cập nhật tin tức báo mới nhất */}
+      {/* Floating Quick Action: Trạm Pomodoro & Tin báo */}
       <div className="fixed bottom-5 right-5 z-20 flex items-center gap-2">
         <Link
+          href="/phong-hoc?tab=pomodoro"
+          className="group flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xl backdrop-blur-md border border-rose-500 transition-all hover:scale-105 active:scale-95"
+          title="Vào Trạm Pomodoro học tập & tự động chuyển bài theo ngày"
+        >
+          <span className="text-sm">🍅</span>
+          <span>Vào Pomodoro</span>
+          <span className="text-[10px] bg-rose-800/80 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-extrabold text-white">
+            Sync
+          </span>
+        </Link>
+
+        <Link
           href="/tin-tuc"
-          className="group flex items-center gap-2 px-4 py-2.5 rounded-full bg-stone-900/95 hover:bg-stone-900 text-white text-xs font-bold shadow-xl backdrop-blur-md border border-stone-700/60 transition-all hover:scale-105 active:scale-95"
+          className="group hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-full bg-stone-900/95 hover:bg-stone-900 text-white text-xs font-bold shadow-xl backdrop-blur-md border border-stone-700/60 transition-all hover:scale-105 active:scale-95"
           title="Nhấn để xem và cập nhật toàn bộ tin tức báo mới nhất về các kỳ thi 2027"
         >
           <span className="relative flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
           </span>
-          <span>📰 Tin Báo Thi Cử 2027</span>
-          <span className="text-[10px] bg-rose-600 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-extrabold text-white">
-            Mới
-          </span>
+          <span>📰 Tin Báo Thi Cử</span>
         </Link>
       </div>
 

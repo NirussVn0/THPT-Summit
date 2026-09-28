@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Calendar, Clock, Sparkles, ChevronDown, ChevronUp, AlertCircle, RefreshCw, PlusCircle, Trash2, Newspaper } from 'lucide-react';
+import { Calendar, Clock, Sparkles, ChevronDown, ChevronUp, AlertCircle, RefreshCw, PlusCircle, Trash2, Timer } from 'lucide-react';
 import { ExamEvent } from '@/types/exam';
 
 interface CountdownGridProps {
@@ -392,18 +392,20 @@ export const CountdownGrid: React.FC<CountdownGridProps> = ({ exams, onUpdateExa
                       <button
                         type="button"
                         onClick={() => {
-                          const el = document.getElementById('education-news-section');
-                          if (el) {
-                            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                          } else {
-                            window.location.href = '/tin-tuc';
-                          }
+                          try {
+                            localStorage.setItem('si_tu_2027_active_exam_target', exam.name);
+                            localStorage.setItem(
+                              'si_tu_2027_pomodoro_sync_notice',
+                              `🍅 Đã kết nối mục tiêu ${exam.name} vào Trạm Pomodoro & kích hoạt Auto-Sync chuỗi bài học!`
+                            );
+                          } catch {}
+                          window.location.href = `/phong-hoc?tab=pomodoro&examTarget=${encodeURIComponent(exam.id)}&examName=${encodeURIComponent(exam.name)}`;
                         }}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 hover:text-indigo-900 py-1 px-1.5 rounded-lg hover:bg-indigo-50 transition-colors shrink-0"
-                        title="Xem tin tức báo chí mới nhất"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 hover:text-rose-900 py-1 px-2 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200/80 transition-all hover:scale-102 active:scale-98 shrink-0"
+                        title={`Bắt đầu học Pomodoro và tự động đồng bộ mục tiêu ${exam.name}`}
                       >
-                        <Newspaper className="w-3 h-3 text-indigo-600" />
-                        <span>Tin báo</span>
+                        <Timer className="w-3 h-3 text-rose-600" />
+                        <span>Vào Pomodoro</span>
                       </button>
                       {exam.tips && exam.tips.length > 0 && (
                         <button
