@@ -9,7 +9,6 @@ import { PinnedDreamHero } from '@/components/PinnedDreamHero';
 import { CountdownGrid } from '@/components/CountdownGrid';
 import { DailyTipsWidget } from '@/components/DailyTipsWidget';
 import { LiveStudyRoomWidget } from '@/components/LiveStudyRoomWidget';
-import { EducationNewsWidget } from '@/components/EducationNewsWidget';
 import { UserProfile, ExamEvent, StudyTask, StudyStats, ReminderSetting } from '@/types/exam';
 import {
   DEFAULT_USER_PROFILE,
@@ -318,39 +317,8 @@ export default function HomePage() {
           onDailyCheckIn={handleDailyCheckIn}
         />
 
-        {/* Top Breaking News Flash Bar */}
-        <div className="mb-6 p-3.5 px-4 rounded-2xl bg-white border border-stone-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-600 text-white shrink-0 uppercase tracking-wide">
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-              Điểm Báo 2K9
-            </span>
-            <div className="text-xs text-stone-800 truncate">
-              <strong>VnExpress / Tuổi Trẻ / Thanh Niên:</strong> Đọc trực tiếp các bài báo mới nhất từ các tòa soạn...
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-            <a
-              href="#education-news-section"
-              className="inline-flex items-center gap-1 text-xs font-bold text-indigo-700 hover:text-indigo-900 hover:underline px-2.5 py-1 rounded-xl bg-indigo-50 border border-indigo-100 transition-colors"
-            >
-              <span>Xem bên dưới</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </a>
-            <Link
-              href="/tin-tuc"
-              className="inline-flex items-center gap-1 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1 rounded-xl shadow-2xs transition-all hover:scale-102 active:scale-98"
-            >
-              <span>Bản Tin Chi Tiết</span>
-            </Link>
-          </div>
-        </div>
-
         {/* Live Multi-Exam Countdown Section */}
         <CountdownGrid exams={exams} onUpdateExams={handleUpdateExams} />
-
-        {/* Cập Nhật Tin Tức Báo Mới Nhất Về Các Kỳ Thi */}
-        <EducationNewsWidget />
 
         {/* Live 2K9 Virtual Study Room & Online Learners Statistics */}
         <LiveStudyRoomWidget
@@ -422,33 +390,6 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
-
-      {/* Floating Quick Action: Trạm Pomodoro & Tin báo */}
-      <div className="fixed bottom-5 right-5 z-20 flex items-center gap-2">
-        <Link
-          href="/phong-hoc?tab=pomodoro"
-          className="group flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xl backdrop-blur-md border border-rose-500 transition-all hover:scale-105 active:scale-95"
-          title="Vào Trạm Pomodoro học tập & tự động chuyển bài theo ngày"
-        >
-          <span className="text-sm">🍅</span>
-          <span>Vào Pomodoro</span>
-          <span className="text-[10px] bg-rose-800/80 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-extrabold text-white">
-            Sync
-          </span>
-        </Link>
-
-        <Link
-          href="/tin-tuc"
-          className="group hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-full bg-stone-900/95 hover:bg-stone-900 text-white text-xs font-bold shadow-xl backdrop-blur-md border border-stone-700/60 transition-all hover:scale-105 active:scale-95"
-          title="Nhấn để xem và cập nhật toàn bộ tin tức báo mới nhất về các kỳ thi 2027"
-        >
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
-          </span>
-          <span>📰 Tin Báo Thi Cử</span>
-        </Link>
-      </div>
 
       {/* Onboarding / Set Target Goal Modal */}
       <OnboardingModal

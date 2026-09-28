@@ -1,5 +1,6 @@
 import type {Metadata} from 'next';
 import './globals.css';
+import { FloatingPomodoroPopup } from '@/components/FloatingPomodoroPopup';
 
 export const metadata: Metadata = {
   title: 'Sĩ Tử 2027 - Đếm Ngược & Lập Lịch Ôn Thi',
@@ -21,6 +22,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
     <html lang="vi">
       <body className="font-sans antialiased bg-[#FAF8F5] text-stone-800 selection:bg-rose-200 selection:text-rose-900 min-h-screen" suppressHydrationWarning>
         {children}
+        <FloatingPomodoroPopup />
       </body>
     </html>
   );

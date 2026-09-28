@@ -60,15 +60,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </Link>
 
-          {/* Mobile Right: Tin tức & Flame streak */}
+          {/* Mobile Right: Flame streak & Goal */}
           <div className="flex md:hidden items-center gap-1.5">
-            <Link
-              href="/tin-tuc"
-              className="flex items-center gap-1 px-2 py-1 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-800 text-[11px] font-bold shadow-2xs hover:bg-indigo-100"
-            >
-              <span>📰</span>
-              <span>Tin Báo</span>
-            </Link>
             <div className="flex items-center gap-1 px-2 py-1 rounded-xl bg-amber-50 border border-amber-200/80 text-xs font-bold text-amber-900 shadow-2xs">
               <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
               <span>{stats.streakDays}d</span>
@@ -106,19 +99,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right: Controls & Live Counter */}
         <div className="hidden md:flex items-center gap-2">
-          {/* Quick Exam News Link */}
-          <Link
-            href="/tin-tuc"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 text-xs font-bold transition-all shadow-2xs"
-            title="Cập nhật toàn bộ tin tức báo chí mới nhất về các kỳ thi 2027"
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-            </span>
-            <span>📰 Tin Báo Mới</span>
-          </Link>
-
           {/* Live Active Learners Badge */}
           <Link
             href="/#live-study-room-section"

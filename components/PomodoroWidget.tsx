@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { StudyTask, PomodoroSettings } from '@/types/exam';
 import { DEFAULT_POMODORO_SETTINGS, POMODORO_PRESETS, playChimeSound, DAYS_OF_WEEK } from '@/lib/constants';
+import { getGlobalPomodoroState, setGlobalPomodoroState } from '@/lib/pomodoroState';
 import confetti from 'canvas-confetti';
 
 interface PomodoroWidgetProps {
@@ -204,9 +205,24 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
 
     window.addEventListener('si_tu_2027_sync_day_queue', handleDaySync);
     window.addEventListener('si_tu_2027_sync_timer_task', handleTaskSync);
+
+    const handleGlobalPomodoroSync = (e: Event) => {
+      const customEvt = e as CustomEvent<any>;
+      if (customEvt.detail) {
+        const g = customEvt.detail;
+        if (typeof g.isRunning === 'boolean') setIsRunning(g.isRunning);
+        if (typeof g.timeLeft === 'number') setTimeLeft(g.timeLeft);
+        if (g.mode) setMode(g.mode);
+        if (g.activeTaskId) setManualTaskId(g.activeTaskId);
+        if (typeof g.syncedDay === 'number') setSyncedDay(g.syncedDay);
+      }
+    };
+    window.addEventListener('si_tu_2027_pomodoro_global_sync', handleGlobalPomodoroSync);
+
     return () => {
       window.removeEventListener('si_tu_2027_sync_day_queue', handleDaySync);
       window.removeEventListener('si_tu_2027_sync_timer_task', handleTaskSync);
+      window.removeEventListener('si_tu_2027_pomodoro_global_sync', handleGlobalPomodoroSync);
     };
   }, [tasks]);
 
@@ -337,6 +353,11 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
       try {
         localStorage.setItem(STORAGE_ACTIVE_TASK_KEY, nextTask.id);
       } catch {}
+
+      setGlobalPomodoroState({
+        activeTaskId: nextTask.id,
+        lastToastNotice: `✓ Đã hoàn thành "${currentTask.title}"! 🚀 Tự động chuyển qua: "${nextTask.title}"`,
+      });
 
       if (mode === 'focus') {
         setTimeLeft(settings.focusMinutes * 60);
@@ -587,14 +608,32 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
     const nextRunning = !isRunning;
     setIsRunning(nextRunning);
     if (onRunningChange) onRunningChange(nextRunning);
+
+    setGlobalPomodoroState({
+      isRunning: nextRunning,
+      timeLeft: timeLeft,
+      totalSeconds: getModeDurationMinutes(mode) * 60,
+      endTimestamp: nextRunning ? Date.now() + timeLeft * 1000 : null,
+      mode: mode as any,
+      activeTaskId: selectedTaskId || null,
+      syncedDay: syncedDay,
+    });
   };
 
   const handleResetPomodoro = () => {
     setIsRunning(false);
-    setTimeLeft(getModeDurationMinutes(mode) * 60);
+    const resetSeconds = getModeDurationMinutes(mode) * 60;
+    setTimeLeft(resetSeconds);
     if (onRunningChange) onRunningChange(false);
     stopAmbientSound();
     playChimeSound('click');
+
+    setGlobalPomodoroState({
+      isRunning: false,
+      timeLeft: resetSeconds,
+      totalSeconds: resetSeconds,
+      endTimestamp: null,
+    });
   };
 
   // Stopwatch actions

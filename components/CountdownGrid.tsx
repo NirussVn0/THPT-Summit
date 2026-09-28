@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Calendar, Clock, Sparkles, ChevronDown, ChevronUp, AlertCircle, RefreshCw, PlusCircle, Trash2, Timer } from 'lucide-react';
 import { ExamEvent } from '@/types/exam';
+import { syncExamToPomodoro } from '@/lib/pomodoroState';
 
 interface CountdownGridProps {
   exams: ExamEvent[];
@@ -392,20 +393,13 @@ export const CountdownGrid: React.FC<CountdownGridProps> = ({ exams, onUpdateExa
                       <button
                         type="button"
                         onClick={() => {
-                          try {
-                            localStorage.setItem('si_tu_2027_active_exam_target', exam.name);
-                            localStorage.setItem(
-                              'si_tu_2027_pomodoro_sync_notice',
-                              `🍅 Đã kết nối mục tiêu ${exam.name} vào Trạm Pomodoro & kích hoạt Auto-Sync chuỗi bài học!`
-                            );
-                          } catch {}
-                          window.location.href = `/phong-hoc?tab=pomodoro&examTarget=${encodeURIComponent(exam.id)}&examName=${encodeURIComponent(exam.name)}`;
+                          syncExamToPomodoro(exam.name, exam.id);
                         }}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 hover:text-rose-900 py-1 px-2 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200/80 transition-all hover:scale-102 active:scale-98 shrink-0"
-                        title={`Bắt đầu học Pomodoro và tự động đồng bộ mục tiêu ${exam.name}`}
+                        className="inline-flex items-center gap-1.5 text-[11px] font-bold text-rose-700 hover:text-rose-900 py-1 px-2.5 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200/90 shadow-2xs transition-all hover:scale-102 active:scale-98 shrink-0"
+                        title={`Bật đồng hồ Pomodoro popup chạy ở góc dưới màn hình & đồng bộ mục tiêu ${exam.name}`}
                       >
-                        <Timer className="w-3 h-3 text-rose-600" />
-                        <span>Vào Pomodoro</span>
+                        <Timer className="w-3.5 h-3.5 text-rose-600 animate-pulse" />
+                        <span>Bật Pomodoro</span>
                       </button>
                       {exam.tips && exam.tips.length > 0 && (
                         <button

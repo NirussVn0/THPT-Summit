@@ -8,7 +8,6 @@ import { SmartStudyPlanner } from '@/components/SmartStudyPlanner';
 import { PomodoroWidget } from '@/components/PomodoroWidget';
 import { ReminderNotificationCenter } from '@/components/ReminderNotificationCenter';
 import { DailyTipsWidget } from '@/components/DailyTipsWidget';
-import { EducationNewsWidget } from '@/components/EducationNewsWidget';
 import { useStudyStorage } from '@/lib/useStudyStorage';
 import {
   CalendarDays,
@@ -19,7 +18,6 @@ import {
   ExternalLink,
   Target,
   Layers,
-  Newspaper,
 } from 'lucide-react';
 
 export default function PhongHocPage() {
@@ -38,12 +36,12 @@ export default function PhongHocPage() {
     handleResetData,
   } = useStudyStorage();
 
-  const [activeTab, setActiveTab] = useState<'pomodoro' | 'planner' | 'reminders' | 'news' | 'all'>(() => {
+  const [activeTab, setActiveTab] = useState<'pomodoro' | 'planner' | 'reminders' | 'all'>(() => {
     if (typeof window !== 'undefined') {
       try {
         const params = new URLSearchParams(window.location.search);
         const tabParam = params.get('tab');
-        if (tabParam === 'news' || tabParam === 'planner' || tabParam === 'pomodoro' || tabParam === 'reminders' || tabParam === 'all') {
+        if (tabParam === 'planner' || tabParam === 'pomodoro' || tabParam === 'reminders' || tabParam === 'all') {
           return tabParam as any;
         }
       } catch {}
@@ -55,7 +53,7 @@ export default function PhongHocPage() {
   // Listen for programmatic tab switch events from other components
   React.useEffect(() => {
     const handleSwitchTab = (e: Event) => {
-      const customEvt = e as CustomEvent<{ tab: 'pomodoro' | 'planner' | 'reminders' | 'news' | 'all' }>;
+      const customEvt = e as CustomEvent<{ tab: 'pomodoro' | 'planner' | 'reminders' | 'all' }>;
       if (customEvt.detail?.tab) {
         setActiveTab(customEvt.detail.tab);
         window.scrollTo({ top: 100, behavior: 'smooth' });
@@ -187,19 +185,6 @@ export default function PhongHocPage() {
               <BellRing className="w-4 h-4 text-amber-600" />
               <span>Chuông Báo & Nhắc Nhở</span>
             </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('news')}
-              className={`flex items-center justify-center gap-2 py-2 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all shrink-0 border ${
-                activeTab === 'news'
-                  ? 'bg-white text-indigo-700 shadow-2xs border-stone-200/60'
-                  : 'text-stone-600 hover:text-stone-900 border-transparent'
-              }`}
-            >
-              <Newspaper className="w-4 h-4 text-indigo-600" />
-              <span>Tin Tức Thi Cử</span>
-            </button>
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
@@ -300,13 +285,6 @@ export default function PhongHocPage() {
           </div>
         )}
 
-        {/* TAB 4: EDUCATION & EXAM NEWS */}
-        {activeTab === 'news' && (
-          <div className="space-y-6 mb-8">
-            <EducationNewsWidget />
-          </div>
-        )}
-
         {/* TAB 4: ALL-IN-ONE MERGED VIEW */}
         {activeTab === 'all' && (
           <div className="space-y-8 mb-8">
@@ -339,28 +317,6 @@ export default function PhongHocPage() {
         {/* Tips Carousel */}
         {activeTab !== 'reminders' && <DailyTipsWidget />}
       </main>
-
-      {/* Floating Quick Action: Cập nhật tin tức báo mới nhất */}
-      <div className="fixed bottom-5 right-5 z-20 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('news');
-            window.scrollTo({ top: 120, behavior: 'smooth' });
-          }}
-          className="group flex items-center gap-2 px-4 py-2.5 rounded-full bg-stone-900/95 hover:bg-stone-900 text-white text-xs font-bold shadow-xl backdrop-blur-md border border-stone-700/60 transition-all hover:scale-105 active:scale-95"
-          title="Nhấn để xem tin tức báo chí và kỳ thi 2027"
-        >
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
-          </span>
-          <span>📰 Tin Báo Thi Cử 2027</span>
-          <span className="text-[10px] bg-rose-600 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-extrabold text-white">
-            Mới
-          </span>
-        </button>
-      </div>
 
       {/* Onboarding Modal if user wants to change goals */}
       <OnboardingModal
