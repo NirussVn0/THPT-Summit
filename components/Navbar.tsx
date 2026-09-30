@@ -6,6 +6,13 @@ import { usePathname } from 'next/navigation';
 import { Sparkles, Edit3, Flame, Volume2, CalendarDays } from 'lucide-react';
 import { UserProfile, StudyStats } from '@/types/exam';
 import { playChimeSound } from '@/lib/constants';
+import { useGlobalPomodoro } from '@/lib/pomodoroState';
+
+function formatTimer(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
 
 interface NavbarProps {
   profile: UserProfile;
@@ -22,6 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   liveLearnerCount = 1482,
 }) => {
   const pathname = usePathname();
+  const { state: pomodoro, toggleVisible: togglePomodoroVisible } = useGlobalPomodoro();
 
   const currentDateStr = new Date().toLocaleDateString('vi-VN', {
     weekday: 'long',
@@ -62,6 +70,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Mobile Right: Flame streak & Goal */}
           <div className="flex md:hidden items-center gap-1.5">
+            {pomodoro.isRunning && (
+              <button
+                type="button"
+                onClick={() => togglePomodoroVisible(true)}
+                className="flex items-center gap-1 px-2 py-1 rounded-xl bg-rose-50 border border-rose-200/90 text-xs font-bold text-rose-700 shadow-2xs"
+                title="Mở popup Pomodoro đang đếm giờ"
+              >
+                <span>🍅</span>
+                <span className="font-mono text-[11px]">{formatTimer(pomodoro.timeLeft)}</span>
+              </button>
+            )}
             <div className="flex items-center gap-1 px-2 py-1 rounded-xl bg-amber-50 border border-amber-200/80 text-xs font-bold text-amber-900 shadow-2xs">
               <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
               <span>{stats.streakDays}d</span>
@@ -99,6 +118,36 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right: Controls & Live Counter */}
         <div className="hidden md:flex items-center gap-2">
+          {/* Pomodoro Quick Access / Live Status */}
+          {pomodoro.isRunning ? (
+            <button
+              type="button"
+              onClick={() => togglePomodoroVisible()}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/90 text-xs font-bold transition-all shadow-2xs hover:scale-102 active:scale-98"
+              title={pomodoro.isVisible ? "Đang hiện popup (nhấn để ẩn)" : "Nhấn để hiện popup Pomodoro"}
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+              </span>
+              <span>🍅</span>
+              <span className="font-mono tabular-nums">{formatTimer(pomodoro.timeLeft)}</span>
+              <span className="text-[10px] uppercase font-black px-1 rounded bg-rose-100/90 text-rose-800">
+                {pomodoro.mode === 'focus' ? 'Học' : 'Nghỉ'}
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => togglePomodoroVisible()}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-stone-100/90 hover:bg-stone-200/80 text-stone-700 hover:text-stone-900 border border-stone-200 text-xs font-semibold transition-all shadow-2xs"
+              title={pomodoro.isVisible ? "Đang hiện popup (nhấn để ẩn)" : "Bật đồng hồ Pomodoro popup"}
+            >
+              <span>🍅</span>
+              <span className="hidden xl:inline">Pomodoro</span>
+            </button>
+          )}
+
           {/* Live Active Learners Badge */}
           <Link
             href="/#live-study-room-section"

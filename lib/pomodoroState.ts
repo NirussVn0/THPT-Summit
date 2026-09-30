@@ -18,7 +18,7 @@ export interface GlobalPomodoroState {
   isVisible: boolean; // whether the floating popup is visible on screen
   isExpanded: boolean; // whether expanded or minimized compact pill
   completedSessions: number;
-  lastToastNotice?: string;
+  lastToastNotice?: string | null;
 }
 
 const STORAGE_POMODORO_GLOBAL_KEY = 'si_tu_2027_pomodoro_global_v2';
@@ -112,7 +112,8 @@ export function getGlobalPomodoroState(): GlobalPomodoroState {
       const raw = localStorage.getItem(STORAGE_POMODORO_GLOBAL_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        memoryState = { ...DEFAULT_STATE, ...parsed };
+        // Important: Always reset lastToastNotice to null so stale notifications NEVER reappear on reload
+        memoryState = { ...DEFAULT_STATE, ...parsed, lastToastNotice: null };
 
         // If it was running, recalculate remaining time from endTimestamp
         if (memoryState.isRunning && memoryState.endTimestamp) {
@@ -122,7 +123,7 @@ export function getGlobalPomodoroState(): GlobalPomodoroState {
             memoryState.isRunning = false;
             memoryState.endTimestamp = null;
           } else {
-            memoryState.timeLeft = Math.max(0, Math.round((memoryState.endTimestamp - now) / 1000));
+            memoryState.timeLeft = Math.max(0, Math.ceil((memoryState.endTimestamp - now) / 1000));
           }
         }
       }
@@ -147,7 +148,9 @@ export function setGlobalPomodoroState(
       if (typeof next.syncedDay === 'number') {
         localStorage.setItem(STORAGE_SYNCED_DAY_KEY, String(next.syncedDay));
       }
-      localStorage.setItem(STORAGE_POMODORO_GLOBAL_KEY, JSON.stringify(next));
+      // Never persist transient toast notices to localStorage
+      const { lastToastNotice: _toast, ...persistable } = next;
+      localStorage.setItem(STORAGE_POMODORO_GLOBAL_KEY, JSON.stringify(persistable));
       if (emitEvent) {
         window.dispatchEvent(
           new CustomEvent('si_tu_2027_pomodoro_global_sync', { detail: next })
@@ -171,12 +174,13 @@ function startGlobalTick() {
   if (typeof window === 'undefined') return;
   if (tickInterval) return;
 
+  // Run at 200ms interval for exact, zero-lag second synchronization
   tickInterval = setInterval(() => {
     const current = memoryState;
     if (!current.isRunning || !current.endTimestamp) return;
 
     const now = Date.now();
-    const remaining = Math.max(0, Math.round((current.endTimestamp - now) / 1000));
+    const remaining = Math.max(0, Math.ceil((current.endTimestamp - now) / 1000));
 
     if (remaining !== current.timeLeft) {
       if (remaining <= 0) {
@@ -186,7 +190,7 @@ function startGlobalTick() {
         setGlobalPomodoroState({ timeLeft: remaining }, true);
       }
     }
-  }, 1000);
+  }, 200);
 }
 
 function handleSessionFinished() {
@@ -235,6 +239,16 @@ function handleSessionFinished() {
       }
     }
 
+    // Trigger desktop notification if permitted
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification('🍅 Sĩ Tử 2027: Hoàn thành ca học!', {
+          body: nextNotice,
+          icon: '/favicon.ico',
+        });
+      } catch {}
+    }
+
     // Switch to Short Break (5 min)
     const breakSeconds = 5 * 60;
     setGlobalPomodoroState({
@@ -250,13 +264,25 @@ function handleSessionFinished() {
   } else {
     // Break finished -> switch to Focus
     const focusSeconds = 25 * 60;
+    const breakEndNotice = '⏰ Hết giờ giải lao! Hãy bắt đầu ca học mới tràn đầy năng lượng nào!';
+
+    // Trigger desktop notification if permitted
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification('⏰ Sĩ Tử 2027: Hết giờ giải lao!', {
+          body: breakEndNotice,
+          icon: '/favicon.ico',
+        });
+      } catch {}
+    }
+
     setGlobalPomodoroState({
       isRunning: false,
       mode: 'focus',
       timeLeft: focusSeconds,
       totalSeconds: focusSeconds,
       endTimestamp: null,
-      lastToastNotice: '⏰ Hết giờ giải lao! Hãy bắt đầu ca học mới tràn đầy năng lượng nào!',
+      lastToastNotice: breakEndNotice,
     });
   }
 }
@@ -267,12 +293,18 @@ export function startPomodoroTimer() {
   const now = Date.now();
   const endTimestamp = now + current.timeLeft * 1000;
 
+  if (tickInterval) {
+    clearInterval(tickInterval);
+    tickInterval = null;
+  }
+
   playChimeSound('start');
   setGlobalPomodoroState({
     isRunning: true,
     endTimestamp,
     isVisible: true,
   });
+  startGlobalTick();
 }
 
 export function pausePomodoroTimer() {
@@ -281,8 +313,13 @@ export function pausePomodoroTimer() {
 
   const now = Date.now();
   const remaining = current.endTimestamp
-    ? Math.max(0, Math.round((current.endTimestamp - now) / 1000))
+    ? Math.max(0, Math.ceil((current.endTimestamp - now) / 1000))
     : current.timeLeft;
+
+  if (tickInterval) {
+    clearInterval(tickInterval);
+    tickInterval = null;
+  }
 
   playChimeSound('click');
   setGlobalPomodoroState({
@@ -303,6 +340,10 @@ export function togglePomodoroTimer() {
 
 export function resetPomodoroTimer() {
   const current = getGlobalPomodoroState();
+  if (tickInterval) {
+    clearInterval(tickInterval);
+    tickInterval = null;
+  }
   playChimeSound('click');
   setGlobalPomodoroState({
     isRunning: false,
@@ -314,6 +355,11 @@ export function resetPomodoroTimer() {
 export function switchPomodoroMode(mode: PomodoroTimerMode, customMinutes?: number) {
   let minutes = customMinutes || (mode === 'focus' ? 25 : mode === 'shortBreak' ? 5 : 15);
   const seconds = minutes * 60;
+
+  if (tickInterval) {
+    clearInterval(tickInterval);
+    tickInterval = null;
+  }
 
   playChimeSound('start');
   setGlobalPomodoroState({
@@ -384,6 +430,10 @@ export function completeCurrentTaskAndAdvance() {
 
 export function skipPomodoroSession(autoStart = false) {
   const current = getGlobalPomodoroState();
+  if (tickInterval) {
+    clearInterval(tickInterval);
+    tickInterval = null;
+  }
   playChimeSound('click');
 
   if (current.mode === 'focus') {
@@ -400,7 +450,7 @@ export function skipPomodoroSession(autoStart = false) {
       totalSeconds: breakSeconds,
       endTimestamp: autoStart ? now + breakSeconds * 1000 : null,
       syncedDay: current.syncedDay,
-      lastToastNotice: `⏭️ Đã bỏ qua tập trung ➔ Chuyển sang ${isLong ? 'Nghỉ dài (15p)' : 'Nghỉ ngắn (5p)'}`,
+      lastToastNotice: null,
     });
   } else {
     // If currently in break (shortBreak or longBreak), skip back to focus session!
@@ -414,9 +464,10 @@ export function skipPomodoroSession(autoStart = false) {
       totalSeconds: focusSeconds,
       endTimestamp: autoStart ? now + focusSeconds * 1000 : null,
       syncedDay: current.syncedDay,
-      lastToastNotice: '⏭️ Đã bỏ qua giờ nghỉ ➔ Bắt đầu phiên Tập trung (25p)',
+      lastToastNotice: null,
     });
   }
+  if (autoStart) startGlobalTick();
 }
 
 export function syncExamToPomodoro(examName: string, examId: string) {
@@ -434,6 +485,11 @@ export function syncExamToPomodoro(examName: string, examId: string) {
 
   const now = Date.now();
   const focusSeconds = 25 * 60;
+
+  if (tickInterval) {
+    clearInterval(tickInterval);
+    tickInterval = null;
+  }
 
   playChimeSound('start');
   try {
@@ -456,6 +512,7 @@ export function syncExamToPomodoro(examName: string, examId: string) {
     isExpanded: false, // compact pill at bottom so user can browse naturally
     lastToastNotice: notice,
   });
+  startGlobalTick();
 }
 
 export function toggleFloatingPomodoroVisibility(forceVisible?: boolean) {
@@ -491,6 +548,19 @@ export function setPomodoroActiveTask(taskId: string) {
   setGlobalPomodoroState({
     activeTaskId: taskId,
   });
+}
+
+export function dismissPomodoroToast() {
+  setGlobalPomodoroState({
+    lastToastNotice: null,
+  });
+}
+
+export function requestNotificationPermission(): Promise<NotificationPermission | null> {
+  if (typeof window !== 'undefined' && 'Notification' in window) {
+    return Notification.requestPermission();
+  }
+  return Promise.resolve(null);
 }
 
 // React hook for components
@@ -546,5 +616,7 @@ export function useGlobalPomodoro() {
     setSyncedDay: setPomodoroSyncedDay,
     setActiveTask: setPomodoroActiveTask,
     skip: skipPomodoroSession,
+    dismissToast: dismissPomodoroToast,
+    requestNotification: requestNotificationPermission,
   };
 }

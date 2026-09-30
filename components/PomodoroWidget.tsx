@@ -144,10 +144,13 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
           return notice;
         }
         const params = new URLSearchParams(window.location.search);
-        const examName = params.get('examName');
-        const examTarget = params.get('examTarget');
-        if (examName || examTarget) {
-          return `🍅 Đã kết nối mục tiêu ${examName || examTarget} vào Trạm Pomodoro & Auto-Sync chuỗi ca học hôm nay!`;
+        const examName = params.get('examName') || params.get('examTarget');
+        if (examName && typeof sessionStorage !== 'undefined') {
+          const key = `si_tu_2027_seen_exam_${examName}`;
+          if (!sessionStorage.getItem(key)) {
+            sessionStorage.setItem(key, '1');
+            return `🍅 Đã kết nối mục tiêu ${examName} vào Trạm Pomodoro & Auto-Sync chuỗi ca học hôm nay!`;
+          }
         }
       } catch {}
     }
@@ -157,7 +160,7 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
   // Auto-dismiss toast
   useEffect(() => {
     if (feedbackToast) {
-      const timer = setTimeout(() => setFeedbackToast(''), 5500);
+      const timer = setTimeout(() => setFeedbackToast(''), 3500);
       return () => clearTimeout(timer);
     }
   }, [feedbackToast]);
@@ -385,89 +388,27 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
     handleCompleteRef.current = handleCompleteAndAdvanceToNextTask;
   });
 
-  // Pomodoro timer loop
+  // Pomodoro timer loop - ambient sound management (countdown is authoritatively driven by globalPomodoroState)
   useEffect(() => {
     if (isRunning && operationalType === 'pomodoro') {
       if (settings.ambientSound !== 'none') {
         startAmbientSound(settings.ambientSound);
       }
-
-      timerRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            if (timerRef.current) clearInterval(timerRef.current);
-            setIsRunning(false);
-            stopAmbientSound();
-
-            if (settings.soundEnabled) playChimeSound('complete');
-
-            if (mode === 'focus') {
-              const newSessionCount = completedSessions + 1;
-              setCompletedSessions(newSessionCount);
-              const minutesSpent = settings.focusMinutes;
-
-              if (onSessionCompleted) onSessionCompleted(minutesSpent);
-
-              // Auto-sync with study schedule task: Complete current task and auto-advance to next task!
-              if (settings.syncWithSchedule && selectedTaskId && onUpdateTasks) {
-                handleCompleteRef.current(selectedTaskId, minutesSpent);
-              }
-
-              try {
-                confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
-              } catch {}
-
-              const shouldBeLongBreak = newSessionCount % settings.longBreakInterval === 0;
-              const nextMode: TimerMode = shouldBeLongBreak ? 'longBreak' : 'shortBreak';
-              setMode(nextMode);
-              const nextSeconds = getModeDurationMinutes(nextMode) * 60;
-              setTimeLeft(nextSeconds);
-
-              if (settings.autoStartBreaks) {
-                setTimeout(() => {
-                  setIsRunning(true);
-                  if (onRunningChange) onRunningChange(true);
-                }, 1000);
-              } else if (onRunningChange) {
-                onRunningChange(false);
-              }
-            } else {
-              setMode('focus');
-              setTimeLeft(settings.focusMinutes * 60);
-              if (settings.autoStartFocus) {
-                setTimeout(() => {
-                  setIsRunning(true);
-                  if (onRunningChange) onRunningChange(true);
-                }, 1000);
-              } else if (onRunningChange) {
-                onRunningChange(false);
-              }
-            }
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
     } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-      stopAmbientSound();
+      if (operationalType === 'pomodoro') {
+        stopAmbientSound();
+      }
     }
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (operationalType === 'pomodoro') {
+        stopAmbientSound();
+      }
     };
   }, [
     isRunning,
     operationalType,
-    mode,
-    settings,
-    completedSessions,
-    selectedTaskId,
-    tasks,
-    onSessionCompleted,
-    onUpdateTasks,
-    onRunningChange,
-    getModeDurationMinutes,
+    settings.ambientSound,
     startAmbientSound,
     stopAmbientSound,
   ]);

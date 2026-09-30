@@ -43,6 +43,7 @@ export const FloatingPomodoroPopup: React.FC = () => {
     toggleVisible,
     setSyncedDay,
     skip,
+    dismissToast,
   } = useGlobalPomodoro();
 
   const [tasks, setTasks] = useState<StudyTask[]>(() => {
@@ -81,21 +82,15 @@ export const FloatingPomodoroPopup: React.FC = () => {
     };
   }, []);
 
-  const [dismissedNotice, setDismissedNotice] = useState<string>('');
-  const toastMessage =
-    state.lastToastNotice && state.lastToastNotice !== dismissedNotice
-      ? state.lastToastNotice
-      : '';
-
-  // Auto-dismiss toast after 5s
+  // Auto-dismiss toast notice after 3.5s
   useEffect(() => {
-    if (toastMessage) {
+    if (state.lastToastNotice) {
       const timer = setTimeout(() => {
-        setDismissedNotice(toastMessage);
-      }, 5000);
+        dismissToast();
+      }, 3500);
       return () => clearTimeout(timer);
     }
-  }, [toastMessage]);
+  }, [state.lastToastNotice, dismissToast]);
 
   const activeTask = tasks.find((t) => t.id === state.activeTaskId);
   const dayTasks = tasks.filter((t) => t.dayOfWeek === state.syncedDay);
@@ -111,55 +106,41 @@ export const FloatingPomodoroPopup: React.FC = () => {
     Math.max(0, ((state.totalSeconds - state.timeLeft) / (state.totalSeconds || 1)) * 100)
   );
 
-  // If not visible and not running, render a floating trigger button so the student can open it anytime
-  if (!state.isVisible && !state.isRunning) {
-    return (
-      <div className="fixed bottom-4 right-4 z-40">
-        <button
-          type="button"
-          onClick={() => {
-            toggleVisible(true);
-            toggle();
-          }}
-          className="group flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-white/95 hover:bg-rose-50 text-stone-800 hover:text-rose-600 border border-stone-200/90 hover:border-rose-300 shadow-lg backdrop-blur-md transition-all hover:scale-105 active:scale-95 text-xs font-bold"
-          title="Bật đồng hồ Pomodoro popup & tự động đồng bộ bài học"
-        >
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
-          </span>
-          <span className="text-sm">🍅</span>
-          <span>Đồng hồ Pomodoro</span>
-          <span className="text-[10px] font-mono bg-stone-100 text-stone-600 group-hover:bg-rose-100 group-hover:text-rose-700 px-1.5 py-0.5 rounded-md">
-            {formatTime(state.timeLeft)}
-          </span>
-        </button>
-      </div>
-    );
+  // If hidden/dismissed and no active toast notification, render nothing so workspace remains 100% clean
+  if (!state.isVisible && !state.lastToastNotice) {
+    return null;
   }
 
   return (
-    <div className="fixed bottom-4 right-3 sm:right-6 z-50 flex flex-col items-end max-w-[calc(100vw-24px)] select-none">
+    <div className="fixed bottom-4 right-3 sm:right-6 z-50 flex flex-col items-end max-w-[calc(100vw-24px)] select-none pointer-events-none">
       {/* Toast Notice Bubble */}
       <AnimatePresence>
-        {toastMessage && (
+        {state.lastToastNotice && (
           <motion.div
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            className="mb-2 max-w-sm px-3.5 py-2 rounded-2xl bg-stone-900/95 text-white text-xs font-semibold shadow-2xl backdrop-blur-md border border-stone-700/80 flex items-center gap-2 pointer-events-auto"
+            className="mb-2 max-w-sm px-3.5 py-2.5 rounded-2xl bg-stone-900/95 text-white text-xs font-semibold shadow-2xl backdrop-blur-md border border-stone-700/80 flex items-center justify-between gap-2.5 pointer-events-auto"
           >
-            <span className="text-base shrink-0">🍅</span>
-            <span className="line-clamp-2 leading-relaxed">{toastMessage}</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-base shrink-0">🍅</span>
+              <span className="line-clamp-2 leading-relaxed text-stone-100">{state.lastToastNotice}</span>
+            </div>
             <button
               type="button"
-              onClick={() => setDismissedNotice(toastMessage)}
-              className="text-stone-400 hover:text-white shrink-0 ml-1 p-0.5"
+              onClick={dismissToast}
+              className="text-stone-400 hover:text-white shrink-0 p-1 rounded-lg hover:bg-white/10 transition-colors"
+              title="Đóng thông báo"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Main Popup Cards (rendered only when isVisible is true) */}
+      {state.isVisible && (
+        <div className="flex flex-col items-end pointer-events-auto">
 
       {/* Expanded Mini Popup Card */}
       <AnimatePresence>
@@ -202,6 +183,14 @@ export const FloatingPomodoroPopup: React.FC = () => {
                   title="Thu nhỏ thành thanh nổi"
                 >
                   <ChevronDown className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleVisible(false)}
+                  className="p-1.5 text-stone-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
+                  title="Ẩn popup (đồng hồ vẫn đếm ngầm, mở lại từ thanh Menu)"
+                >
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -494,6 +483,8 @@ export const FloatingPomodoroPopup: React.FC = () => {
           <X className="w-3.5 h-3.5" />
         </button>
       </motion.div>
+        </div>
+      )}
     </div>
   );
 };
