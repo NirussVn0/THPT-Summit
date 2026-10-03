@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { PomodoroWidget } from '@/components/PomodoroWidget';
+import { YouTubeMusicPlayer } from '@/components/YouTubeMusicPlayer';
 import { useStudyStorage } from '@/lib/useStudyStorage';
 import {
   CalendarDays,
@@ -121,13 +122,15 @@ export default function PomodoroPage() {
         </div>
 
         {/* The Dedicated Pomodoro Station */}
-        <div className="mb-8">
+        <div className="mb-6 space-y-6">
           <PomodoroWidget
             tasks={tasks}
             onUpdateTasks={updateTasks}
             onSessionCompleted={handleSessionCompleted}
             isStandaloneSection={true}
           />
+          {/* YouTube Study Music Player directly under Pomodoro */}
+          <YouTubeMusicPlayer />
         </div>
 
         {/* Today's Synced Schedule Section */}

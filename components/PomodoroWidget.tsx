@@ -344,12 +344,17 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
     onUpdateTasks(updatedTasks);
     playChimeSound('complete');
 
+    const isAutoAdvance =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('si_tu_2027_auto_advance_enabled') !== 'false'
+        : true;
+
     // Find next uncompleted task in the synced day's queue
     const remainingDayTasks = updatedTasks.filter(
       (t) => t.dayOfWeek === syncedDay && !t.completed && t.id !== currentId
     );
 
-    if (remainingDayTasks.length > 0) {
+    if (isAutoAdvance && remainingDayTasks.length > 0) {
       const nextTask = remainingDayTasks[0];
       setManualTaskId(nextTask.id);
       try {
@@ -358,7 +363,7 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
 
       setGlobalPomodoroState({
         activeTaskId: nextTask.id,
-        lastToastNotice: `✓ Đã hoàn thành "${currentTask.title}"! 🚀 Tự động chuyển qua: "${nextTask.title}"`,
+        lastToastNotice: `✓ Đã hoàn thành "${currentTask.title}"! 🚀 Tiếp tục với: "${nextTask.title}"`,
       });
 
       if (mode === 'focus') {
@@ -370,16 +375,20 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
       } catch {}
 
       setFeedbackToast(
-        `✓ Đã hoàn thành "${currentTask.title}"! 🚀 Tự động chuyển qua bài tiếp theo: "${nextTask.title}"`
+        `✓ Đã xong "${currentTask.title}"! Chuyển sang bài tiếp theo: "${nextTask.title}"`
       );
-      setTimeout(() => setFeedbackToast(''), 5500);
+      setTimeout(() => setFeedbackToast(''), 4500);
     } else {
       try {
         confetti({ particleCount: 100, spread: 80, origin: { y: 0.5 } });
       } catch {}
       const dayLabel = DAYS_OF_WEEK.find((d) => d.day === syncedDay)?.label || `Thứ ${syncedDay + 1}`;
-      setFeedbackToast(`🎉 Tuyệt vời! Bạn đã hoàn thành toàn bộ nhiệm vụ của ${dayLabel}!`);
-      setTimeout(() => setFeedbackToast(''), 6000);
+      setFeedbackToast(
+        remainingDayTasks.length === 0
+          ? `🎉 Xuất sắc! Bạn đã hoàn thành toàn bộ bài học của ${dayLabel}!`
+          : `✓ Đã đánh dấu hoàn thành: "${currentTask.title}"`
+      );
+      setTimeout(() => setFeedbackToast(''), 4500);
     }
   };
 
@@ -1070,7 +1079,7 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 text-[11px] flex-wrap">
                     <span className="font-extrabold text-purple-900">
-                      Ca {dayTasks.findIndex((t) => t.id === activeTaskId) + 1}/{dayTasks.length} ({DAYS_OF_WEEK.find((d) => d.day === syncedDay)?.label || 'Hôm nay'}):
+                      Đang học:
                     </span>
                     <span className="font-bold px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-800 border border-purple-200">
                       {activeTask.subject}
@@ -1087,15 +1096,15 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
                 type="button"
                 onClick={() => handleCompleteAndAdvanceToNextTask(activeTask.id)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-2xs transition-all hover:scale-102 active:scale-98 shrink-0 self-end sm:self-auto"
-                title="Đánh dấu hoàn thành ca học này và tự động chuyển sang ca tiếp theo"
+                title="Đánh dấu hoàn thành bài học này"
               >
                 <Check className="w-3.5 h-3.5" />
-                <span>Xong bài này ➔ Qua bài tiếp</span>
+                <span>Hoàn thành bài này</span>
               </button>
             </div>
           ) : (
             <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200/80 text-center text-xs text-stone-500">
-              Chưa có bài học nào được lên lịch cho {DAYS_OF_WEEK.find((d) => d.day === syncedDay)?.label}. Bạn có thể chọn ngày khác ở trên hoặc chuyển sang tab Lịch Học 2K9.
+              Chưa chọn ca học cụ thể. Bạn có thể chọn bài từ Lịch Học 2K9 bên cạnh để đếm giờ.
             </div>
           )}
 
@@ -1131,18 +1140,6 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
               {isRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-current" />}
               <span>{isRunning ? 'Tạm dừng hiệp' : 'Bắt đầu học'}</span>
             </button>
-
-            {activeTask && (
-              <button
-                type="button"
-                onClick={() => handleCompleteAndAdvanceToNextTask(activeTask.id)}
-                className="px-4 py-3 rounded-2xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs hover:scale-102 active:scale-98"
-                title="Đánh dấu hoàn thành bài học này và tự động chuyển sang bài tiếp theo"
-              >
-                <Check className="w-4 h-4 text-purple-700" />
-                <span>Xong ca & Qua bài tiếp</span>
-              </button>
-            )}
 
             <button
               type="button"

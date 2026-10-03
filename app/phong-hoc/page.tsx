@@ -6,6 +6,7 @@ import { Navbar } from '@/components/Navbar';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { SmartStudyPlanner } from '@/components/SmartStudyPlanner';
 import { PomodoroWidget } from '@/components/PomodoroWidget';
+import { YouTubeMusicPlayer } from '@/components/YouTubeMusicPlayer';
 import { ReminderNotificationCenter } from '@/components/ReminderNotificationCenter';
 import { DailyTipsWidget } from '@/components/DailyTipsWidget';
 import { useStudyStorage } from '@/lib/useStudyStorage';
@@ -36,26 +37,37 @@ export default function PhongHocPage() {
     handleResetData,
   } = useStudyStorage();
 
-  const [activeTab, setActiveTab] = useState<'pomodoro' | 'planner' | 'reminders' | 'all'>(() => {
+  const [activeTab, setActiveTab] = useState<'all' | 'pomodoro' | 'planner' | 'reminders'>(() => {
     if (typeof window !== 'undefined') {
       try {
+        const savedTab = localStorage.getItem('si_tu_2027_phong_hoc_active_tab');
+        if (savedTab === 'all' || savedTab === 'pomodoro' || savedTab === 'planner' || savedTab === 'reminders') {
+          return savedTab as any;
+        }
         const params = new URLSearchParams(window.location.search);
         const tabParam = params.get('tab');
-        if (tabParam === 'planner' || tabParam === 'pomodoro' || tabParam === 'reminders' || tabParam === 'all') {
+        if (tabParam === 'all' || tabParam === 'pomodoro' || tabParam === 'planner' || tabParam === 'reminders') {
           return tabParam as any;
         }
       } catch {}
     }
-    return 'pomodoro';
+    return 'all'; // Default to unified merged view as requested
   });
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+
+  const handleSelectTab = (tab: 'all' | 'pomodoro' | 'planner' | 'reminders') => {
+    setActiveTab(tab);
+    try {
+      localStorage.setItem('si_tu_2027_phong_hoc_active_tab', tab);
+    } catch {}
+  };
 
   // Listen for programmatic tab switch events from other components
   React.useEffect(() => {
     const handleSwitchTab = (e: Event) => {
       const customEvt = e as CustomEvent<{ tab: 'pomodoro' | 'planner' | 'reminders' | 'all' }>;
       if (customEvt.detail?.tab) {
-        setActiveTab(customEvt.detail.tab);
+        handleSelectTab(customEvt.detail.tab);
         window.scrollTo({ top: 100, behavior: 'smooth' });
       }
     };
@@ -145,9 +157,24 @@ export default function PhongHocPage() {
           <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-2xl w-full sm:w-auto overflow-x-auto">
             <button
               type="button"
+              data-tab="all"
+              id="tab-all-btn"
+              onClick={() => handleSelectTab('all')}
+              className={`flex items-center justify-center gap-2 py-2 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all shrink-0 border ${
+                activeTab === 'all'
+                  ? 'bg-purple-600 text-white shadow-2xs border-purple-600'
+                  : 'text-stone-600 hover:text-stone-900 border-transparent'
+              }`}
+            >
+              <Layers className="w-4 h-4" />
+              <span>Hợp Nhất Toàn Bộ ✨</span>
+            </button>
+
+            <button
+              type="button"
               data-tab="pomodoro"
               id="tab-pomodoro-btn"
-              onClick={() => setActiveTab('pomodoro')}
+              onClick={() => handleSelectTab('pomodoro')}
               className={`flex items-center justify-center gap-2 py-2 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all shrink-0 border ${
                 activeTab === 'pomodoro'
                   ? 'bg-white text-rose-700 shadow-2xs border-stone-200/60'
@@ -162,7 +189,7 @@ export default function PhongHocPage() {
               type="button"
               data-tab="planner"
               id="tab-planner-btn"
-              onClick={() => setActiveTab('planner')}
+              onClick={() => handleSelectTab('planner')}
               className={`flex items-center justify-center gap-2 py-2 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all shrink-0 border ${
                 activeTab === 'planner'
                   ? 'bg-white text-purple-700 shadow-2xs border-stone-200/60'
@@ -175,7 +202,7 @@ export default function PhongHocPage() {
 
             <button
               type="button"
-              onClick={() => setActiveTab('reminders')}
+              onClick={() => handleSelectTab('reminders')}
               className={`flex items-center justify-center gap-2 py-2 px-3.5 rounded-xl text-xs md:text-sm font-bold transition-all shrink-0 border ${
                 activeTab === 'reminders'
                   ? 'bg-white text-amber-700 shadow-2xs border-stone-200/60'
@@ -188,19 +215,11 @@ export default function PhongHocPage() {
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveTab(activeTab === 'all' ? 'pomodoro' : 'all')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border flex items-center gap-1.5 ${
-                activeTab === 'all'
-                  ? 'bg-stone-900 text-white shadow-xs border-stone-900'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200 border-transparent'
-              }`}
-              title="Xem đồng thời cả Pomodoro, Lịch học và Chuông báo"
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>{activeTab === 'all' ? 'Chế độ phân mục' : 'Hợp nhất toàn bộ'}</span>
-            </button>
+            <span className="text-[11px] text-stone-500 font-medium hidden sm:inline">
+              {activeTab === 'all'
+                ? '⚡ Bố cục: Trái: Pomodoro & Nhạc • Phải: Lịch Học • Dưới: Chuông Báo'
+                : 'Đang ở chế độ xem riêng biệt'}
+            </span>
           </div>
         </div>
 
@@ -213,6 +232,9 @@ export default function PhongHocPage() {
               onSessionCompleted={handleSessionCompleted}
               isStandaloneSection={true}
             />
+
+            {/* YouTube Music Player directly under Pomodoro */}
+            <YouTubeMusicPlayer />
 
             {/* Quick banner to switch to planner */}
             <div className="p-4 rounded-2xl bg-purple-50/80 border border-purple-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
@@ -229,7 +251,7 @@ export default function PhongHocPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setActiveTab('planner')}
+                onClick={() => handleSelectTab('planner')}
                 className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 shrink-0"
               >
                 <span>Xem Lịch Học 2K9</span>
@@ -264,7 +286,7 @@ export default function PhongHocPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setActiveTab('pomodoro')}
+                onClick={() => handleSelectTab('pomodoro')}
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 shrink-0"
               >
                 <span>Bật Trạm Pomodoro</span>
@@ -285,31 +307,60 @@ export default function PhongHocPage() {
           </div>
         )}
 
-        {/* TAB 4: ALL-IN-ONE MERGED VIEW */}
+        {/* TAB 4: ALL-IN-ONE MERGED VIEW (HỢP NHẤT TOÀN BỘ) */}
         {activeTab === 'all' && (
           <div className="space-y-8 mb-8">
-            {/* Top row: Pomodoro + Reminders side by side */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-              <PomodoroWidget
-                tasks={tasks}
-                onUpdateTasks={updateTasks}
-                onSessionCompleted={handleSessionCompleted}
-                isStandaloneSection={true}
-              />
-              <ReminderNotificationCenter
-                reminders={reminders}
-                onUpdateReminders={updateReminders}
-              />
+            {/* 2-Column Split: Left is Pomodoro + YouTube Music, Right is Smart Study Planner */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Left Column (5 cols on lg, 4 cols on xl): Pomodoro Station + YouTube Music */}
+              <div className="lg:col-span-5 xl:col-span-4 space-y-6">
+                <PomodoroWidget
+                  tasks={tasks}
+                  onUpdateTasks={updateTasks}
+                  onSessionCompleted={handleSessionCompleted}
+                  isStandaloneSection={true}
+                />
+
+                {/* YouTube Study Music Player directly under Pomodoro */}
+                <YouTubeMusicPlayer />
+              </div>
+
+              {/* Right Column (7 cols on lg, 8 cols on xl): Smart Study Planner */}
+              <div className="lg:col-span-7 xl:col-span-8">
+                <SmartStudyPlanner
+                  tasks={tasks}
+                  profile={profile}
+                  onUpdateTasks={updateTasks}
+                  onTaskCompleted={handleTaskCompleted}
+                />
+              </div>
             </div>
 
-            {/* Bottom row: Full Width Smart Study Planner */}
-            <div>
-              <SmartStudyPlanner
-                tasks={tasks}
-                profile={profile}
-                onUpdateTasks={updateTasks}
-                onTaskCompleted={handleTaskCompleted}
-              />
+            {/* Bottom Row: Chuông Báo & Nhắc Nhở Ca Học (Full Width) */}
+            <div className="pt-6 border-t border-stone-200/80">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-sm shadow-2xs">
+                    🔔
+                  </div>
+                  <div>
+                    <h3 className="text-sm md:text-base font-bold text-stone-900">
+                      Chuông Báo & Nhắc Nhở Ca Học (Kỷ Luật 2K9)
+                    </h3>
+                    <p className="text-xs text-stone-500">
+                      Cài đặt chuông báo tự động cho từng buổi học trong ngày
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <ReminderNotificationCenter
+                  reminders={reminders}
+                  onUpdateReminders={updateReminders}
+                />
+                <DailyTipsWidget />
+              </div>
             </div>
           </div>
         )}

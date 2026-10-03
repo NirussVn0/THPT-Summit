@@ -24,6 +24,9 @@ import {
   PlusCircle,
   ChevronDown,
   ChevronUp,
+  GripVertical,
+  ArrowUpDown,
+  Bot,
 } from 'lucide-react';
 import { StudyTask, SubjectTag, UserProfile, SubTaskItem } from '@/types/exam';
 import { STUDY_TEMPLATES, playChimeSound, DAYS_OF_WEEK } from '@/lib/constants';
@@ -97,6 +100,19 @@ export const SmartStudyPlanner: React.FC<SmartStudyPlannerProps> = ({
   // Quick inline subtask input on card
   const [quickSubtaskInput, setQuickSubtaskInput] = useState<{ [taskId: string]: string }>({});
   const [activeSubtaskInputTaskId, setActiveSubtaskInputTaskId] = useState<string | null>(null);
+
+  // Drag and drop task reordering state
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
+
+  // Gemini AI Hub modal state
+  const [aiTab, setAiTab] = useState<'generate' | 'classify' | 'sort'>('generate');
+  const [customAiPrompt, setCustomAiPrompt] = useState('');
+  const [targetAiExam, setTargetAiExam] = useState<'THPTQG' | 'V-ACT' | 'HSA' | 'Tất cả'>('THPTQG');
+  const [generatedAiTasks, setGeneratedAiTasks] = useState<StudyTask[]>([]);
+  const [aiSortResult, setAiSortResult] = useState<{ tasks: StudyTask[]; explanation: string } | null>(null);
+  const [aiClassifyResult, setAiClassifyResult] = useState<{ tasks: StudyTask[]; summary: string } | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
 
   // AI Generator Form
   const [weakSubjects, setWeakSubjects] = useState<string[]>(['Toán', 'Tư duy logic']);
@@ -499,6 +515,202 @@ export const SmartStudyPlanner: React.FC<SmartStudyPlannerProps> = ({
     }
   };
 
+  // Drag and drop task reordering
+  const handleReorderTasks = (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
+    const sourceIndex = tasks.findIndex((t) => t.id === sourceId);
+    const targetIndex = tasks.findIndex((t) => t.id === targetId);
+    if (sourceIndex === -1 || targetIndex === -1) return;
+
+    const nextTasks = [...tasks];
+    const [moved] = nextTasks.splice(sourceIndex, 1);
+    nextTasks.splice(targetIndex, 0, moved);
+
+    onUpdateTasks(nextTasks);
+    playChimeSound('click');
+
+    // Sync first uncompleted task of selectedDay with Pomodoro
+    const dayTasks = nextTasks.filter((t) => t.dayOfWeek === selectedDay);
+    const firstUnfinished = dayTasks.find((t) => !t.completed);
+    if (firstUnfinished) {
+      setGlobalPomodoroState({
+        activeTaskId: firstUnfinished.id,
+        syncedDay: selectedDay,
+      });
+    }
+
+    setToastMessage('✓ Đã cập nhật thứ tự ca học! Ca đầu tiên sẽ tự động đồng bộ vào Pomodoro.');
+    setTimeout(() => setToastMessage(''), 3500);
+  };
+
+  const handleMoveTaskOrder = (taskId: string, direction: 'up' | 'down') => {
+    const dayTasks = tasks.filter((t) => t.dayOfWeek === selectedDay);
+    const currentIndex = dayTasks.findIndex((t) => t.id === taskId);
+    if (currentIndex === -1) return;
+
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= dayTasks.length) return;
+
+    const targetTask = dayTasks[targetIndex];
+    handleReorderTasks(taskId, targetTask.id);
+  };
+
+  // 1. Generate tasks with Gemini AI
+  const handleGenerateAiTasks = async () => {
+    setIsAiLoading(true);
+    try {
+      const res = await fetch('/api/gemini/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generate',
+          payload: {
+            university: profile.targetUniversity,
+            major: profile.targetMajor,
+            targetScore: profile.targetScore,
+            weakSubjects,
+            hoursPerDay: studyHours,
+            dayOfWeek: selectedDay,
+            targetExams: targetAiExam === 'Tất cả' ? ['THPTQG 2027', 'V-ACT 2027', 'HSA 2027'] : [targetAiExam],
+            customPrompt: customAiPrompt.trim(),
+          },
+        }),
+      });
+
+      const data = await res.json();
+      if (data.tasks && Array.isArray(data.tasks)) {
+        setGeneratedAiTasks(data.tasks);
+        setAiAdvice(data.advice || '');
+        playChimeSound('complete');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Không thể tạo ca học bằng AI lúc này. Vui lòng thử lại sau.');
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const handleAddGeneratedTasksToSchedule = (newItems: StudyTask[]) => {
+    const nextTasks = [...tasks, ...newItems];
+    onUpdateTasks(nextTasks);
+    playChimeSound('complete');
+    try {
+      confetti({ particleCount: 65, spread: 60, origin: { y: 0.6 } });
+    } catch {}
+    setShowAiModal(false);
+    setGeneratedAiTasks([]);
+    setToastMessage(`✨ Đã thêm ${newItems.length} ca học AI vào ${DAYS_OF_WEEK.find((d) => d.day === selectedDay)?.label}!`);
+    setTimeout(() => setToastMessage(''), 4000);
+  };
+
+  // 2. Classify tasks with Gemini AI
+  const handleClassifyTasks = async () => {
+    const dayTasks = tasks.filter((t) => t.dayOfWeek === selectedDay);
+    if (dayTasks.length === 0) {
+      alert('Chưa có ca học nào trong ngày này để phân loại!');
+      return;
+    }
+
+    setIsAiLoading(true);
+    try {
+      const res = await fetch('/api/gemini/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'classify',
+          payload: { tasks: dayTasks },
+        }),
+      });
+
+      const data = await res.json();
+      if (data.tasks && Array.isArray(data.tasks)) {
+        setAiClassifyResult({
+          tasks: data.tasks,
+          summary: data.summary || '',
+        });
+        playChimeSound('complete');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const handleApplyClassifiedTasks = () => {
+    if (!aiClassifyResult) return;
+    const classifiedMap = new Map(aiClassifyResult.tasks.map((t) => [t.id, t]));
+    const nextTasks = tasks.map((t) => classifiedMap.get(t.id) || t);
+    onUpdateTasks(nextTasks);
+    playChimeSound('complete');
+    setShowAiModal(false);
+    setAiClassifyResult(null);
+    setToastMessage('✨ Đã áp dụng chuẩn hóa phân loại môn và kỳ thi từ Gemini AI!');
+    setTimeout(() => setToastMessage(''), 4000);
+  };
+
+  // 3. Smart Sort tasks with Gemini (Chronobiology & Learning Science)
+  const handleSortTasks = async () => {
+    const dayTasks = tasks.filter((t) => t.dayOfWeek === selectedDay);
+    if (dayTasks.length < 2) {
+      alert('Cần ít nhất 2 ca học trong ngày để AI phân tích và sắp xếp thứ tự!');
+      return;
+    }
+
+    setIsAiLoading(true);
+    try {
+      const res = await fetch('/api/gemini/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'sort',
+          payload: {
+            tasks: dayTasks,
+            dayOfWeek: selectedDay,
+          },
+        }),
+      });
+
+      const data = await res.json();
+      if (data.tasks && Array.isArray(data.tasks)) {
+        setAiSortResult({
+          tasks: data.tasks,
+          explanation: data.explanation || '',
+        });
+        playChimeSound('complete');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const handleApplySortedTasks = () => {
+    if (!aiSortResult) return;
+    const otherTasks = tasks.filter((t) => t.dayOfWeek !== selectedDay);
+    const nextTasks = [...otherTasks, ...aiSortResult.tasks];
+    onUpdateTasks(nextTasks);
+
+    const firstUnfinished = aiSortResult.tasks.find((t) => !t.completed);
+    if (firstUnfinished) {
+      setGlobalPomodoroState({
+        activeTaskId: firstUnfinished.id,
+        syncedDay: selectedDay,
+      });
+    }
+
+    playChimeSound('complete');
+    try {
+      confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+    } catch {}
+    setShowAiModal(false);
+    setAiSortResult(null);
+    setToastMessage('🧠 Đã sắp xếp lại thứ tự ca học tối ưu cho não bộ! Ca đầu tiên đã đồng bộ vào Pomodoro.');
+    setTimeout(() => setToastMessage(''), 4500);
+  };
+
   return (
     <div className="space-y-6">
       {/* Toast Feedback Notification Banner */}
@@ -733,7 +945,7 @@ export const SmartStudyPlanner: React.FC<SmartStudyPlannerProps> = ({
               </div>
             </div>
           ) : (
-            filteredTasks.map((task) => {
+            filteredTasks.map((task, index) => {
               const colorInfo = SUBJECT_COLORS[task.subject] || SUBJECT_COLORS.Default;
               const dayObj = DAYS_OF_WEEK.find((d) => d.day === task.dayOfWeek);
               const subtasks = task.subtasks || [];
@@ -746,16 +958,91 @@ export const SmartStudyPlanner: React.FC<SmartStudyPlannerProps> = ({
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
+                  draggable={!task.completed}
+                  onDragStart={(e: any) => {
+                    e.dataTransfer?.setData('text/plain', task.id);
+                    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+                    setDraggedTaskId(task.id);
+                  }}
+                  onDragOver={(e: any) => {
+                    e.preventDefault?.();
+                    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+                    if (draggedTaskId && draggedTaskId !== task.id) {
+                      setDragOverTaskId(task.id);
+                    }
+                  }}
+                  onDragLeave={() => {
+                    if (dragOverTaskId === task.id) {
+                      setDragOverTaskId(null);
+                    }
+                  }}
+                  onDrop={(e: any) => {
+                    e.preventDefault?.();
+                    const sourceId = e.dataTransfer?.getData('text/plain') || draggedTaskId;
+                    if (sourceId && sourceId !== task.id) {
+                      handleReorderTasks(sourceId, task.id);
+                    }
+                    setDraggedTaskId(null);
+                    setDragOverTaskId(null);
+                  }}
+                  onDragEnd={() => {
+                    setDraggedTaskId(null);
+                    setDragOverTaskId(null);
+                  }}
                   onDoubleClick={() => handleSyncTaskWithTimer(task)}
                   className={`group relative p-3.5 md:p-4 rounded-2xl border transition-all flex flex-col gap-2.5 ${
+                    dragOverTaskId === task.id
+                      ? 'border-purple-500 ring-2 ring-purple-400 bg-purple-50/70 shadow-md scale-[1.01]'
+                      : ''
+                  } ${
+                    draggedTaskId === task.id ? 'opacity-40 border-dashed border-purple-400' : ''
+                  } ${
                     task.completed
                       ? 'bg-stone-50/80 border-stone-200 text-stone-400'
                       : 'bg-white border-stone-200/90 hover:border-purple-300 shadow-2xs hover:shadow-xs'
                   }`}
-                  title="Nhấn đúp (click 2 lần) để kết nối Pomodoro / Bấm giờ"
+                  title="Kéo thả biểu tượng ::: để đổi thứ tự, hoặc nhấn đúp để kết nối Pomodoro"
                 >
                   {/* Top Task Row */}
-                  <div className="flex items-start gap-3.5">
+                  <div className="flex items-start gap-2.5 sm:gap-3.5">
+                    {/* Drag Handle & Up/Down Arrows */}
+                    {!task.completed && (
+                      <div className="flex flex-col items-center justify-center shrink-0 -ml-1 text-stone-300 group-hover:text-stone-500">
+                        <div
+                          className="p-1 cursor-grab active:cursor-grabbing hover:text-purple-600 rounded-lg hover:bg-stone-100 transition-colors"
+                          title="Kéo thả để sắp xếp thứ tự ca học"
+                        >
+                          <GripVertical className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col -space-y-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveTaskOrder(task.id, 'up');
+                            }}
+                            disabled={index === 0}
+                            className="p-0.5 text-stone-300 hover:text-purple-600 disabled:opacity-20 disabled:hover:text-stone-300 rounded"
+                            title="Di chuyển lên trên"
+                          >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveTaskOrder(task.id, 'down');
+                            }}
+                            disabled={index === filteredTasks.length - 1}
+                            className="p-0.5 text-stone-300 hover:text-purple-600 disabled:opacity-20 disabled:hover:text-stone-300 rounded"
+                            title="Di chuyển xuống dưới"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Completion Checkbox */}
                     <button
                       type="button"
@@ -1470,113 +1757,445 @@ export const SmartStudyPlanner: React.FC<SmartStudyPlannerProps> = ({
         </div>
       )}
 
-      {/* AI Smart Roadmap Advisor Modal */}
+      {/* Gemini AI Multi-Feature Hub Modal */}
       {showAiModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-xs">
-          <div className="w-full max-w-lg bg-white rounded-3xl p-6 shadow-xl border border-stone-200">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center text-xl shrink-0">
-                ✨
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/50 backdrop-blur-xs">
+          <div className="w-full max-w-2xl bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-3 pb-4 border-b border-stone-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center text-xl shadow-xs shrink-0">
+                  ✨
+                </div>
+                <div>
+                  <h3 className="text-base md:text-lg font-bold text-stone-900 flex items-center gap-2">
+                    <span>Gemini AI Cố Vấn Sĩ Tử 2K9</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                      gemini-3.8-flash
+                    </span>
+                  </h3>
+                  <p className="text-xs text-stone-500">
+                    Tạo ca học mục tiêu, tối ưu hóa thứ tự não bộ và chuẩn hóa phân loại môn thi 2027.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base font-bold text-stone-900">AI Cố Vấn Phân Bổ Lịch Học 2K9</h3>
-                <p className="text-xs text-stone-500">
-                  Dựa vào trường NV1 ({profile.targetUniversity || 'Bách Khoa'}) và năng lực của bạn để tự động lập thời khóa biểu khoa học.
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowAiModal(false)}
+                className="text-stone-400 hover:text-stone-700 p-1.5 rounded-xl hover:bg-stone-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1.5">
-                  Môn học bạn cảm thấy cần ưu tiên bổ sung kiến thức nhất:
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {['Toán', 'Ngữ Văn', 'Tiếng Anh', 'Vật Lí', 'Hóa Học', 'Tư duy logic', 'Đọc hiểu ĐGNL'].map((sub) => {
-                    const isSelected = weakSubjects.includes(sub);
-                    return (
+            {/* 3 AI Mode Tabs */}
+            <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-2xl my-4">
+              <button
+                type="button"
+                onClick={() => setAiTab('generate')}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  aiTab === 'generate'
+                    ? 'bg-white text-purple-700 shadow-2xs'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>1. Tạo Ca Học</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAiTab('sort')}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  aiTab === 'sort'
+                    ? 'bg-white text-amber-800 shadow-2xs'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <ArrowUpDown className="w-3.5 h-3.5" />
+                <span>2. Sắp Xếp Thứ Tự</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAiTab('classify')}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  aiTab === 'classify'
+                    ? 'bg-white text-sky-800 shadow-2xs'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <Bot className="w-3.5 h-3.5" />
+                <span>3. Phân Loại Môn</span>
+              </button>
+            </div>
+
+            {/* TAB 1: GENERATE TASKS */}
+            {aiTab === 'generate' && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                      Mục tiêu kỳ thi ưu tiên:
+                    </label>
+                    <select
+                      value={targetAiExam}
+                      onChange={(e) => setTargetAiExam(e.target.value as any)}
+                      className="w-full px-3 py-2 text-xs bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-300 font-medium"
+                    >
+                      <option value="THPTQG">THPT Quốc Gia 2027</option>
+                      <option value="V-ACT">ĐGNL ĐHQG-HCM (V-ACT)</option>
+                      <option value="HSA">ĐGNL ĐHQG-HN (HSA)</option>
+                      <option value="Tất cả">Toàn diện (THPTQG + ĐGNL)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                      Tổng thời gian tự học trong ngày: <span className="text-purple-700 font-bold">{studyHours} giờ</span>
+                    </label>
+                    <input
+                      type="range"
+                      min={1}
+                      max={6}
+                      step={0.5}
+                      value={studyHours}
+                      onChange={(e) => setStudyHours(Number(e.target.value))}
+                      className="w-full accent-purple-600 mt-2"
+                    />
+                    <div className="flex justify-between text-[10px] text-stone-400">
+                      <span>1h (Nhẹ nhàng)</span>
+                      <span>3h (Khuyến nghị)</span>
+                      <span>6h (Cày thần tốc)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1.5">
+                    Môn cần ưu tiên cải thiện (Tick chọn để AI tập trung nhiều thời lượng hơn):
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['Toán', 'Ngữ Văn', 'Tiếng Anh', 'Vật Lí', 'Hóa Học', 'Sinh Học', 'Lịch Sử', 'Địa Lí', 'Tư duy logic (ĐGNL)', 'Đọc hiểu ĐGNL'].map((sub) => {
+                      const isSelected = weakSubjects.includes(sub);
+                      return (
+                        <button
+                          key={sub}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) setWeakSubjects(weakSubjects.filter((s) => s !== sub));
+                            else setWeakSubjects([...weakSubjects, sub]);
+                          }}
+                          className={`px-3 py-1 rounded-xl text-xs font-medium transition-all border ${
+                            isSelected
+                              ? 'bg-purple-600 text-white border-purple-600 font-semibold shadow-2xs'
+                              : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
+                          }`}
+                        >
+                          {sub} {isSelected && '✓'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Yêu cầu đặc biệt cho buổi học (tùy chọn):
+                  </label>
+                  <input
+                    type="text"
+                    value={customAiPrompt}
+                    onChange={(e) => setCustomAiPrompt(e.target.value)}
+                    placeholder="Ví dụ: Ôn kỹ Tích phân và 10 câu Tư duy định tính HSA..."
+                    className="w-full px-3.5 py-2 text-xs bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-300"
+                  />
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    disabled={isAiLoading}
+                    onClick={handleGenerateAiTasks}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-md disabled:opacity-50"
+                  >
+                    {isAiLoading ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Gemini đang lên kế hoạch ca học...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        <span>Tạo Ca Học Cho {DAYS_OF_WEEK.find((d) => d.day === selectedDay)?.label}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Generated Tasks Preview */}
+                {generatedAiTasks.length > 0 && (
+                  <div className="mt-4 p-4 rounded-2xl bg-purple-50/70 border border-purple-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
+                        <span>🎯 Đã tạo thành công {generatedAiTasks.length} ca học tối ưu:</span>
+                      </div>
+                      <span className="text-[11px] text-purple-700 font-semibold">
+                        Tổng: {generatedAiTasks.reduce((sum, t) => sum + t.durationMinutes, 0)} phút
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                      {generatedAiTasks.map((t, idx) => (
+                        <div
+                          key={t.id || idx}
+                          className="p-2.5 bg-white rounded-xl border border-purple-200/80 text-xs flex flex-col gap-1 shadow-2xs"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5 font-bold text-stone-900">
+                              <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 text-[10px]">
+                                {t.subject}
+                              </span>
+                              <span>{t.title}</span>
+                            </div>
+                            <span className="text-[11px] font-mono font-semibold text-stone-600">
+                              {t.durationMinutes}p ({t.timeSlot})
+                            </span>
+                          </div>
+                          {t.notes && <p className="text-[11px] text-stone-500 italic">💡 {t.notes}</p>}
+                          {t.subtasks && t.subtasks.length > 0 && (
+                            <div className="text-[10px] text-purple-700 flex flex-wrap gap-1.5 mt-0.5">
+                              {t.subtasks.map((st: any, sIdx: number) => (
+                                <span key={sIdx} className="bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200/60">
+                                  ✓ {st.title}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {aiAdvice && (
+                      <div className="text-xs text-purple-900 italic bg-white/70 p-2.5 rounded-xl border border-purple-200/60">
+                        💬 <strong>Lời khuyên từ AI:</strong> {aiAdvice}
+                      </div>
+                    )}
+
+                    <div className="flex justify-end pt-1">
                       <button
-                        key={sub}
                         type="button"
-                        onClick={() => {
-                          if (isSelected) setWeakSubjects(weakSubjects.filter((s) => s !== sub));
-                          else setWeakSubjects([...weakSubjects, sub]);
-                        }}
-                        className={`px-3 py-1 rounded-xl text-xs font-medium transition-all border ${
-                          isSelected
-                            ? 'bg-purple-600 text-white border-purple-600 font-semibold shadow-2xs'
-                            : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
-                        }`}
+                        onClick={() => handleAddGeneratedTasksToSchedule(generatedAiTasks)}
+                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-1.5"
                       >
-                        {sub} {isSelected && '✓'}
+                        <Check className="w-4 h-4" />
+                        <span>Nạp {generatedAiTasks.length} ca học này vào lịch {DAYS_OF_WEEK.find((d) => d.day === selectedDay)?.label}</span>
                       </button>
-                    );
-                  })}
-                </div>
+                    </div>
+                  </div>
+                )}
               </div>
+            )}
 
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Thời lượng tự học mỗi ngày của bạn: <span className="text-purple-700 font-bold">{studyHours} giờ/ngày</span>
-                </label>
-                <input
-                  type="range"
-                  min={1}
-                  max={6}
-                  step={0.5}
-                  value={studyHours}
-                  onChange={(e) => setStudyHours(Number(e.target.value))}
-                  className="w-full accent-purple-600"
-                />
-                <div className="flex justify-between text-[10px] text-stone-400 mt-1">
-                  <span>1 giờ (Thong thả)</span>
-                  <span>3 giờ (Khuyến nghị 2K9)</span>
-                  <span>6 giờ (Cày thần tốc)</span>
+            {/* TAB 2: SMART SORT CHRONOBIOLOGY */}
+            {aiTab === 'sort' && (
+              <div className="space-y-4">
+                <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-1.5">
+                  <div className="font-bold flex items-center gap-1.5 text-amber-900">
+                    <ArrowUpDown className="w-4 h-4 text-amber-600" />
+                    <span>Khoa Học Não Bộ & Phân Bổ Nhịp Sinh Học Sĩ Tử 2K9:</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-amber-900/90">
+                    AI sẽ phân tích danh sách các ca học hiện có của ngày này, đưa môn đòi hỏi tư duy logic nặng (Toán, Lý, Hóa, Logic) vào thời điểm não tỉnh táo nhất, đồng thời xen kẽ với các môn ngôn ngữ / đọc hiểu (Văn, Anh, Sử) để tránh mệt mỏi bán cầu não.
+                  </p>
                 </div>
-              </div>
 
-              <div className="p-3 bg-purple-50/70 rounded-2xl border border-purple-200/60 text-xs text-purple-900 space-y-1">
-                <div className="font-semibold flex items-center gap-1 text-purple-950">
-                  <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                  <span>Dữ liệu ghim của bạn:</span>
-                </div>
-                <div>• Trường: <span className="font-semibold">{profile.targetUniversity}</span></div>
-                <div>• Ngành: <span className="font-semibold">{profile.targetMajor}</span></div>
-                <div>• Mục tiêu: <span className="font-semibold">{profile.targetScore}</span></div>
-              </div>
+                <div className="border border-stone-200 rounded-2xl p-3 bg-stone-50/60">
+                  <div className="text-xs font-bold text-stone-800 mb-2 flex items-center justify-between">
+                    <span>Danh sách hiện tại của {DAYS_OF_WEEK.find((d) => d.day === selectedDay)?.label} ({tasks.filter((t) => t.dayOfWeek === selectedDay).length} ca):</span>
+                  </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAiModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-medium text-stone-600 hover:bg-stone-100"
-                >
-                  Đóng
-                </button>
-                <button
-                  id="btn-run-ai-generator"
-                  type="button"
-                  disabled={isGeneratingAi}
-                  onClick={async () => {
-                    await handleGenerateAiPlan();
-                    setShowAiModal(false);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-xs disabled:opacity-50"
-                >
-                  {isGeneratingAi ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Đang kiến tạo lộ trình...</span>
-                    </>
+                  {tasks.filter((t) => t.dayOfWeek === selectedDay).length === 0 ? (
+                    <div className="text-xs text-stone-500 py-4 text-center">
+                      Chưa có ca học nào trong ngày này để sắp xếp. Vui lòng thêm bài học trước!
+                    </div>
                   ) : (
-                    <>
-                      <Wand2 className="w-3.5 h-3.5" />
-                      <span>Tạo Lịch Ôn Cá Nhân Hóa ✨</span>
-                    </>
+                    <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                      {tasks
+                        .filter((t) => t.dayOfWeek === selectedDay)
+                        .map((t, idx) => (
+                          <div
+                            key={t.id}
+                            className="flex items-center justify-between p-2 rounded-xl bg-white border border-stone-200 text-xs"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-full bg-stone-100 text-stone-600 font-bold flex items-center justify-center text-[10px]">
+                                {idx + 1}
+                              </span>
+                              <span className="font-semibold text-stone-800">{t.subject}:</span>
+                              <span className="text-stone-600 truncate max-w-[240px]">{t.title}</span>
+                            </div>
+                            <span className="text-[11px] font-mono text-stone-500">{t.durationMinutes}p</span>
+                          </div>
+                        ))}
+                    </div>
                   )}
-                </button>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    disabled={isAiLoading || tasks.filter((t) => t.dayOfWeek === selectedDay).length < 2}
+                    onClick={handleSortTasks}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-md disabled:opacity-50"
+                  >
+                    {isAiLoading ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Gemini đang phân tích nhịp sinh học não bộ...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ArrowUpDown className="w-4 h-4" />
+                        <span>Phân Tích & Sắp Xếp Thứ Tự Tối Ưu</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Sort Result Preview */}
+                {aiSortResult && (
+                  <div className="mt-4 p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3">
+                    <div className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                      <span>🧠 Thứ tự tối ưu đã được phân tích:</span>
+                    </div>
+
+                    <p className="text-xs text-amber-900 italic bg-white/70 p-2.5 rounded-xl border border-amber-200/60 leading-relaxed">
+                      💡 {aiSortResult.explanation}
+                    </p>
+
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      {aiSortResult.tasks.map((t, idx) => (
+                        <div
+                          key={t.id || idx}
+                          className="flex items-center justify-between p-2 rounded-xl bg-white border border-amber-200/80 text-xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-[10px]">
+                              {idx + 1}
+                            </span>
+                            <span className="font-bold text-stone-900">{t.subject}:</span>
+                            <span className="text-stone-700 truncate max-w-[240px]">{t.title}</span>
+                          </div>
+                          <span className="text-[11px] font-mono text-purple-700 font-semibold">{t.timeSlot}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={handleApplySortedTasks}
+                        className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-1.5"
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>Áp Dụng Thứ Tự Tối Ưu Này Vào Lịch Học</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
+
+            {/* TAB 3: CLASSIFY TASKS */}
+            {aiTab === 'classify' && (
+              <div className="space-y-4">
+                <div className="p-3.5 rounded-2xl bg-sky-50/80 border border-sky-200 text-xs text-sky-950 space-y-1.5">
+                  <div className="font-bold flex items-center gap-1.5 text-sky-900">
+                    <Bot className="w-4 h-4 text-sky-600" />
+                    <span>Chuẩn Hóa Phân Loại Theo Chương Trình GDPT 2018 & Kỳ Thi 2027:</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-sky-900/90">
+                    AI sẽ kiểm tra các bài học, tự động chuẩn hóa tên môn, gắn nhãn kỳ thi (THPTQG 2027, V-ACT ĐHQG-HCM, HSA ĐHQG-HN) và thiết lập mức độ ưu tiên trọng điểm (high/medium/low).
+                  </p>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    disabled={isAiLoading || tasks.filter((t) => t.dayOfWeek === selectedDay).length === 0}
+                    onClick={handleClassifyTasks}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-all shadow-md disabled:opacity-50"
+                  >
+                    {isAiLoading ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Gemini đang phân loại & chuẩn hóa môn học...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Bot className="w-4 h-4" />
+                        <span>Phân Loại Ca Học {DAYS_OF_WEEK.find((d) => d.day === selectedDay)?.label}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Classify Result Preview */}
+                {aiClassifyResult && (
+                  <div className="mt-4 p-4 rounded-2xl bg-sky-50/70 border border-sky-200 space-y-3">
+                    <div className="text-xs font-bold text-sky-950 flex items-center gap-1.5">
+                      <span>🏷️ Kết quả phân loại & chuẩn hóa:</span>
+                    </div>
+
+                    <p className="text-xs text-sky-900 italic bg-white/70 p-2.5 rounded-xl border border-sky-200/60 leading-relaxed">
+                      📊 {aiClassifyResult.summary}
+                    </p>
+
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      {aiClassifyResult.tasks.map((t, idx) => (
+                        <div
+                          key={t.id || idx}
+                          className="flex items-center justify-between p-2 rounded-xl bg-white border border-sky-200/80 text-xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sky-900">{t.subject}</span>
+                            <span className="text-stone-700 truncate max-w-[200px]">{t.title}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-stone-100 text-stone-700 border">
+                              {t.examTarget}
+                            </span>
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                t.priority === 'high'
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : t.priority === 'medium'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-emerald-100 text-emerald-800'
+                              }`}
+                            >
+                              {t.priority === 'high' ? 'Trọng điểm' : t.priority === 'medium' ? 'Củng cố' : 'Nhẹ'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={handleApplyClassifiedTasks}
+                        className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-1.5"
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>Áp Dụng Chuẩn Hóa Phân Loại Này</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
