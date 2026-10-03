@@ -925,40 +925,85 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
       </AnimatePresence>
 
       {/* Widget Header with Operational Mode Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-4 border-b border-stone-100">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200/60 flex items-center justify-center text-base font-bold shadow-2xs shrink-0">
-            {operationalType === 'pomodoro' ? '🍅' : operationalType === 'stopwatch' ? '⏱️' : '⏳'}
+      <div className="mb-4 pb-3.5 border-b border-stone-100 space-y-3">
+        {/* Top Row: Title, Subtitle and Action Icons */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200/60 flex items-center justify-center text-sm sm:text-base font-bold shadow-2xs shrink-0">
+              {operationalType === 'pomodoro' ? '🍅' : operationalType === 'stopwatch' ? '⏱️' : '⏳'}
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-base font-bold text-stone-900 truncate">
+                Trạm Bấm Giờ Học Sâu 2K9
+              </h3>
+              <p className="text-[11px] sm:text-xs text-stone-500 truncate">
+                {operationalType === 'pomodoro'
+                  ? 'Kỹ thuật Pomodoro ngắt nhịp tập trung'
+                  : operationalType === 'stopwatch'
+                  ? 'Bấm giờ xuôi đo thời gian thực chiến'
+                  : 'Đếm ngược mục tiêu thời lượng'}
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-sm md:text-base font-bold text-stone-900">
-              Trạm Bấm Giờ Học Sâu 2K9
-            </h3>
-            <p className="text-xs text-stone-500">
-              Lựa chọn phương thức bấm giờ tối ưu cho từng buổi học
-            </p>
+
+          {/* Utility icons: Sound, Settings, Zen mode */}
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleUpdateSettings({ soundEnabled: !settings.soundEnabled })}
+              className={`p-1.5 sm:p-2 rounded-xl transition-colors ${
+                settings.soundEnabled
+                  ? 'text-purple-600 bg-purple-50 hover:bg-purple-100'
+                  : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'
+              }`}
+              title={settings.soundEnabled ? 'Tắt chuông báo' : 'Bật chuông báo'}
+            >
+              {settings.soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4 text-stone-400" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowSettingsDrawer(!showSettingsDrawer)}
+              className={`p-1.5 sm:p-2 rounded-xl transition-colors ${
+                showSettingsDrawer
+                  ? 'text-purple-700 bg-purple-100'
+                  : 'text-stone-500 hover:text-stone-800 hover:bg-stone-100'
+              }`}
+              title="Cài đặt thời gian"
+            >
+              <Settings2 className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsZenMode(true)}
+              className="p-1.5 sm:p-2 rounded-xl text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors"
+              title="Chế độ Zen toàn màn hình"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        {/* 3 Operational Mode Selector Tabs */}
-        <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-2xl self-start sm:self-auto overflow-x-auto no-scrollbar">
+        {/* 3 Operational Mode Selector Tabs - Full Width Grid (Never pushes layout) */}
+        <div className="grid grid-cols-3 gap-1 p-1 bg-stone-100 rounded-2xl w-full">
           <button
             type="button"
             onClick={() => setOperationalType('pomodoro')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
+            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl text-xs font-semibold transition-all text-center truncate ${
               operationalType === 'pomodoro'
                 ? 'bg-white text-rose-700 shadow-2xs border border-stone-200/60 font-bold'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-white/40'
             }`}
           >
             <span>🍅</span>
-            <span>Pomodoro (25/50/90p)</span>
+            <span className="truncate">Pomodoro</span>
           </button>
 
           <button
             type="button"
             onClick={() => setOperationalType('stopwatch')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
+            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl text-xs font-semibold transition-all text-center truncate ${
               operationalType === 'stopwatch'
                 ? 'bg-white text-emerald-700 shadow-2xs border border-stone-200/60 font-bold'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-white/40'
@@ -966,58 +1011,20 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
             title="Đo xem bạn thực tế dành bao nhiêu thời gian cho bài học"
           >
             <span>⏱️</span>
-            <span>Bấm Giờ Xuôi (Stopwatch)</span>
+            <span className="truncate">Bấm giờ xuôi</span>
           </button>
 
           <button
             type="button"
             onClick={() => setOperationalType('countdown')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
+            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl text-xs font-semibold transition-all text-center truncate ${
               operationalType === 'countdown'
                 ? 'bg-white text-purple-700 shadow-2xs border border-stone-200/60 font-bold'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-white/40'
             }`}
           >
             <span>⏳</span>
-            <span>Đếm Ngược Tùy Chỉnh</span>
-          </button>
-        </div>
-
-        {/* Utility icons: Sound, Settings, Zen mode */}
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            onClick={() => handleUpdateSettings({ soundEnabled: !settings.soundEnabled })}
-            className={`p-2 rounded-xl transition-colors ${
-              settings.soundEnabled
-                ? 'text-purple-600 bg-purple-50 hover:bg-purple-100'
-                : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'
-            }`}
-            title={settings.soundEnabled ? 'Tắt chuông báo' : 'Bật chuông báo'}
-          >
-            {settings.soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowSettingsDrawer(!showSettingsDrawer)}
-            className={`p-2 rounded-xl transition-colors ${
-              showSettingsDrawer
-                ? 'text-purple-700 bg-purple-100'
-                : 'text-stone-500 hover:text-stone-800 hover:bg-stone-100'
-            }`}
-            title="Cài đặt thời gian"
-          >
-            <Settings2 className="w-4 h-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsZenMode(true)}
-            className="p-2 rounded-xl text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors"
-            title="Chế độ Zen toàn màn hình"
-          >
-            <Maximize2 className="w-4 h-4" />
+            <span className="truncate">Đếm ngược</span>
           </button>
         </div>
       </div>
@@ -1028,56 +1035,56 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
       {operationalType === 'pomodoro' && (
         <div className="space-y-5">
           {/* Mode Selector (Focus / Short Break / Long Break) */}
-          <div className="flex items-center justify-center gap-1.5 p-1 bg-stone-100 rounded-2xl max-w-sm mx-auto">
+          <div className="grid grid-cols-3 gap-1 p-1 bg-stone-100 rounded-2xl w-full max-w-md mx-auto">
             <button
               type="button"
               onClick={() => handleSelectMode('focus')}
-              className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-center truncate ${
                 mode === 'focus'
                   ? 'bg-white text-rose-700 shadow-2xs'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              <Brain className="w-3.5 h-3.5 text-rose-500" />
-              <span>Học tập ({settings.focusMinutes}p)</span>
+              <Brain className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+              <span className="truncate">Học ({settings.focusMinutes}p)</span>
             </button>
 
             <button
               type="button"
               onClick={() => handleSelectMode('shortBreak')}
-              className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-center truncate ${
                 mode === 'shortBreak'
                   ? 'bg-white text-emerald-700 shadow-2xs'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              <Coffee className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Nghỉ ngắn ({settings.shortBreakMinutes}p)</span>
+              <Coffee className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+              <span className="truncate">Nghỉ ({settings.shortBreakMinutes}p)</span>
             </button>
 
             <button
               type="button"
               onClick={() => handleSelectMode('longBreak')}
-              className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              className={`py-1.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 text-center truncate ${
                 mode === 'longBreak'
                   ? 'bg-white text-sky-700 shadow-2xs'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-sky-500" />
-              <span>Nghỉ dài ({settings.longBreakMinutes}p)</span>
+              <Sparkles className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+              <span className="truncate">Nghỉ dài ({settings.longBreakMinutes}p)</span>
             </button>
           </div>
 
           {/* Active Task in Focus */}
           {activeTask ? (
-            <div className="p-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-50 via-rose-50/70 to-amber-50/70 border border-purple-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
-                  🎯
-                </span>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-[11px] flex-wrap">
+            <div className="p-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-50 via-rose-50/70 to-amber-50/70 border border-purple-200/80 shadow-2xs flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-7 h-7 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+                    🎯
+                  </span>
+                  <div className="flex items-center gap-1.5 min-w-0 text-[11px] flex-wrap">
                     <span className="font-extrabold text-purple-900">
                       Đang học:
                     </span>
@@ -1086,21 +1093,22 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
                     </span>
                     <span className="text-stone-500 font-medium">({activeTask.durationMinutes}p)</span>
                   </div>
-                  <div className="text-xs sm:text-sm font-extrabold text-stone-900 truncate mt-0.5">
-                    {activeTask.title}
-                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleCompleteAndAdvanceToNextTask(activeTask.id)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-2xs transition-all hover:scale-102 active:scale-98 shrink-0"
+                  title="Đánh dấu hoàn thành bài học này"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Xong bài</span>
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => handleCompleteAndAdvanceToNextTask(activeTask.id)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-2xs transition-all hover:scale-102 active:scale-98 shrink-0 self-end sm:self-auto"
-                title="Đánh dấu hoàn thành bài học này"
-              >
-                <Check className="w-3.5 h-3.5" />
-                <span>Hoàn thành bài này</span>
-              </button>
+              <div className="text-xs sm:text-sm font-bold text-stone-900 line-clamp-2 pl-0.5">
+                {activeTask.title}
+              </div>
             </div>
           ) : (
             <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200/80 text-center text-xs text-stone-500">
@@ -1227,18 +1235,18 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
               }`}
             >
               {isStopwatchRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-current" />}
-              <span>{isStopwatchRunning ? 'Tạm dừng' : 'Bắt đầu đo thời gian'}</span>
+              <span>{isStopwatchRunning ? 'Tạm dừng' : 'Bắt đầu đo'}</span>
             </button>
 
             <button
               type="button"
               onClick={handleSaveStopwatchToTask}
               disabled={stopwatchSeconds < 10}
-              className="px-5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white text-sm font-bold shadow-md transition-all flex items-center gap-1.5"
+              className="px-4 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white text-sm font-bold shadow-md transition-all flex items-center gap-1.5"
               title="Lưu số phút vừa học vào ca học này"
             >
               <Check className="w-4 h-4" />
-              <span>Hoàn thành & Lưu vào bài ({Math.max(1, Math.round(stopwatchSeconds / 60))}p)</span>
+              <span>Lưu vào bài ({Math.max(1, Math.round(stopwatchSeconds / 60))}p)</span>
             </button>
 
             <button

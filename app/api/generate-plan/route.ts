@@ -128,17 +128,46 @@ Trả về DUY NHẤT một định dạng JSON hợp lệ (không chứa markdo
 }
 `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-    });
+    let text = '';
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite',
+        contents: prompt,
+      });
+      text = response.text || '';
+    } catch (modelErr) {
+      console.warn('Gemini 3.1-flash-lite failed in generate-plan, trying gemini-flash-latest:', modelErr);
+      try {
+        const response = await ai.models.generateContent({
+          model: 'gemini-flash-latest',
+          contents: prompt,
+        });
+        text = response.text || '';
+      } catch (fallbackErr) {
+        console.error('All models failed in generate-plan:', fallbackErr);
+      }
+    }
 
-    const text = response.text || '';
-    // Clean potential code fences
-    const cleanJson = text.replace(/```json/gi, '').replace(/```/g, '').trim();
-    const parsed = JSON.parse(cleanJson);
+    if (text) {
+      // Clean potential code fences
+      const cleanJson = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+      let parsed: any = null;
+      try {
+        parsed = JSON.parse(cleanJson);
+      } catch {
+        const firstBrace = text.indexOf('{');
+        const lastBrace = text.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace > firstBrace) {
+          try {
+            parsed = JSON.parse(text.substring(firstBrace, lastBrace + 1));
+          } catch {}
+        }
+      }
 
-    return NextResponse.json(parsed);
+      if (parsed && Array.isArray(parsed.plan) && parsed.plan.length > 0) {
+        return NextResponse.json(parsed);
+      }
+    }
   } catch (error) {
     console.error('Error in study plan generation:', error);
     // Fallback response so user always gets a seamless experience
